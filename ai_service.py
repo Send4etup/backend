@@ -2,10 +2,16 @@
 import os
 import asyncio
 from openai import AsyncOpenAI
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Union
 import logging
 import base64
 from pathlib import Path
+import json
+import PyPDF2
+import docx
+import pandas as pd
+from PIL import Image
+import io
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +23,13 @@ class AIService:
             raise ValueError("OPENAI_API_KEY не найден в переменных окружения")
 
         self.client = AsyncOpenAI(api_key=api_key)
-        self.model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        self.model = os.getenv("OPENAI_MODEL", "gpt-4o")
+
+        # Модели, поддерживающие vision
+        self.vision_models = ["gpt-4o", "gpt-4o-mini", "gpt-4-vision-preview", "gpt-4-turbo"]
+
+        # Максимальный размер изображения для обработки (в пикселях)
+        self.max_image_size = 2048
 
         # Системные промпты для разных типов инструментов
         self.system_prompts = {
@@ -51,11 +63,27 @@ class AIService:
             Помогай с учебой, творчеством и повседневными задачами."""
         }
 
-    def encode_image_to_base64(self, image_path: str) -> str:
-        """Кодирование изображения в base64"""
+    def encode_image_to_base64(self, image_path: str) -> Optional[str]:
+        """Кодирование изображения в base64 с оптимизацией размера"""
         try:
-            with open(image_path, "rb") as image_file:
-                return base64.b64encode(image_file.read()).decode('utf-8')
+            # Открываем и оптимизируем изображение
+            with Image.open(image_path) as img:
+                # Конвертируем в RGB если нужно
+                if img.mode in ("RGBA", "P"):
+                    img = img.convert("RGB")
+
+                # Уменьшаем размер если слишком большое
+                if max(img.size) > self.max_image_size:
+                    img.thumbnail((self.max_image_size, self.max_image_size), Image.Resampling.LANCZOS)
+
+                # Сохраняем в память как JPEG с оптимизацией
+                buffer = io.BytesIO()
+                img.save(buffer, format="JPEG", quality=85, optimize=True)
+                buffer.seek(0)
+
+                # Кодируем в base64
+                return base64.b64encode(buffer.getvalue()).decode('utf-8')
+
         except Exception as e:
             logger.error(f"Error encoding image {image_path}: {e}")
             return None
@@ -76,25 +104,154 @@ class AIService:
 
         return mime_types.get(extension, 'image/jpeg')
 
-    def prepare_file_context(self, files_context: str) -> str:
-        """Подготовка контекста файлов для AI"""
-        if not files_context:
-            return ""
+    async def extract_text_from_pdf(self, file_path: str) -> str:
+        """Извлечение текста из PDF файла"""
+        try:
+            text = ""
+            with open(file_path, 'rb') as file:
+                pdf_reader = PyPDF2.PdfReader(file)
+                for page_num in range(min(len(pdf_reader.pages), 10)):  # Первые 10 страниц
+                    page = pdf_reader.pages[page_num]
+                    text += page.extract_text() + "\n"
 
-        return f"\n\nПользователь прикрепил следующие файлы: {files_context}\n" \
-               f"Пожалуйста, учти эти файлы в своем ответе."
+            # Ограничиваем размер текста
+            return text[:5000] if len(text) > 5000 else text
+
+        except Exception as e:
+            logger.error(f"Error extracting PDF text from {file_path}: {e}")
+            return f"Ошибка при чтении PDF файла: {str(e)}"
+
+    async def extract_text_from_docx(self, file_path: str) -> str:
+        """Извлечение текста из Word документа"""
+        try:
+            doc = docx.Document(file_path)
+            text = ""
+            for paragraph in doc.paragraphs[:100]:  # Первые 100 параграфов
+                text += paragraph.text + "\n"
+
+            # Ограничиваем размер текста
+            return text[:5000] if len(text) > 5000 else text
+
+        except Exception as e:
+            logger.error(f"Error extracting DOCX text from {file_path}: {e}")
+            return f"Ошибка при чтении Word документа: {str(e)}"
+
+    async def extract_text_from_excel(self, file_path: str) -> str:
+        """Извлечение данных из Excel файла"""
+        try:
+            df = pd.read_excel(file_path, nrows=50)  # Первые 50 строк
+
+            # Создаем описание таблицы
+            description = f"Excel файл содержит {len(df)} строк и {len(df.columns)} столбцов.\n"
+            description += f"Столбцы: {', '.join(df.columns.tolist())}\n\n"
+
+            # Добавляем первые несколько строк
+            description += "Первые строки данных:\n"
+            description += df.head(10).to_string(max_cols=10, max_colwidth=50)
+
+            return description
+
+        except Exception as e:
+            logger.error(f"Error reading Excel file {file_path}: {e}")
+            return f"Ошибка при чтении Excel файла: {str(e)}"
+
+    async def extract_text_from_csv(self, file_path: str) -> str:
+        """Извлечение данных из CSV файла"""
+        try:
+            df = pd.read_csv(file_path, nrows=50)  # Первые 50 строк
+
+            # Создаем описание таблицы
+            description = f"CSV файл содержит {len(df)} строк и {len(df.columns)} столбцов.\n"
+            description += f"Столбцы: {', '.join(df.columns.tolist())}\n\n"
+
+            # Добавляем первые несколько строк
+            description += "Первые строки данных:\n"
+            description += df.head(10).to_string(max_cols=10, max_colwidth=50)
+
+            return description
+
+        except Exception as e:
+            logger.error(f"Error reading CSV file {file_path}: {e}")
+            return f"Ошибка при чтении CSV файла: {str(e)}"
+
+    async def extract_text_from_file(self, file_path: str, file_type: str) -> str:
+        """Универсальная функция извлечения текста из файлов"""
+        try:
+            if file_type == "text/plain":
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read(5000)  # Первые 5000 символов
+                return content
+
+            elif "pdf" in file_type:
+                return await self.extract_text_from_pdf(file_path)
+
+            elif "word" in file_type or "document" in file_type:
+                return await self.extract_text_from_docx(file_path)
+
+            elif "excel" in file_type or "spreadsheet" in file_type:
+                return await self.extract_text_from_excel(file_path)
+
+            elif "csv" in file_type:
+                return await self.extract_text_from_csv(file_path)
+
+            else:
+                return f"Формат файла {file_type} поддерживается для загрузки, но извлечение текста не реализовано."
+
+        except Exception as e:
+            logger.error(f"Error extracting text from {file_path}: {e}")
+            return f"Ошибка при обработке файла: {str(e)}"
+
+    async def prepare_message_content(self, message: str, files_data: List[Dict]) -> List[Dict]:
+        """Подготовка контента сообщения с файлами для OpenAI API"""
+        content = [{"type": "text", "text": message}]
+
+        # Обрабатываем каждый файл
+        for file_data in files_data:
+            file_path = file_data.get('file_path')
+            file_type = file_data.get('file_type')
+            file_name = file_data.get('original_name', 'unknown')
+
+            if not file_path or not os.path.exists(file_path):
+                continue
+
+            # Если это изображение и модель поддерживает vision
+            if (file_type.startswith('image/') and
+                    self.model in self.vision_models):
+
+                base64_image = self.encode_image_to_base64(file_path)
+                if base64_image:
+                    content.append({
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:{file_type};base64,{base64_image}",
+                            "detail": "auto"
+                        }
+                    })
+                    logger.info(f"Added image {file_name} to message content")
+
+            # Если это документ, извлекаем текст
+            else:
+                extracted_text = await self.extract_text_from_file(file_path, file_type)
+                if extracted_text:
+                    content.append({
+                        "type": "text",
+                        "text": f"\n\n--- Содержимое файла '{file_name}' ({file_type}) ---\n{extracted_text}\n--- Конец файла ---\n"
+                    })
+                    logger.info(f"Added document content from {file_name}")
+
+        return content
 
     async def get_response(
             self,
             message: str,
             context: Dict[str, Any] = {},
-            chat_history: List[Dict[str, str]] = []
+            chat_history: List[Dict[str, str]] = [],
+            files_data: List[Dict] = []
     ) -> str:
         """Получить ответ от GPT с учетом файлов"""
         try:
             tool_type = context.get('tool_type', 'default')
             system_prompt = self.system_prompts.get(tool_type, self.system_prompts['default'])
-            files_context = context.get('files_context', '')
 
             # Формируем сообщения для GPT
             messages = [
@@ -113,30 +270,25 @@ class AIService:
                             content += f" [Прикреплены файлы: {file_info}]"
                         messages.append({"role": role, "content": content})
 
-            # Подготавливаем текущее сообщение
-            current_message_content = message
-
-            # Добавляем контекст файлов к сообщению
-            if files_context:
-                current_message_content += self.prepare_file_context(files_context)
-
-            # Проверяем, есть ли изображения для анализа
-            # (В реальной реализации здесь будет логика обработки изображений через GPT-4 Vision)
-            has_images = files_context and "Изображение" in files_context
-
-            if has_images and self.model in ["gpt-4o", "gpt-4o-mini", "gpt-4-vision-preview"]:
-                # Для моделей с поддержкой изображений можно добавить специальную обработку
-                current_message_content += "\n\n📸 Примечание: Обнаружены изображения. " \
-                                           "В полной версии API они будут переданы для анализа."
+            # Подготавливаем контент текущего сообщения с файлами
+            if files_data:
+                message_content = await self.prepare_message_content(message, files_data)
+            else:
+                message_content = message
 
             # Добавляем текущее сообщение
-            messages.append({"role": "user", "content": current_message_content})
+            messages.append({
+                "role": "user",
+                "content": message_content
+            })
+
+            logger.info(f"Sending request to {self.model} with {len(files_data)} files")
 
             # Вызываем GPT
             response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
-                max_tokens=1500,  # Увеличиваем для более подробных ответов с файлами
+                max_tokens=2000,  # Увеличиваем для более подробных ответов с файлами
                 temperature=0.7,
                 presence_penalty=0.1,
                 frequency_penalty=0.1
@@ -144,12 +296,17 @@ class AIService:
 
             ai_response = response.choices[0].message.content
 
-            logger.info(f"GPT response generated for tool_type: {tool_type}, with_files: {bool(files_context)}")
+            logger.info(f"GPT response generated for tool_type: {tool_type}, with {len(files_data)} files")
             return ai_response
 
         except Exception as e:
             logger.error(f"OpenAI API error: {e}")
             # Fallback на статичный ответ при ошибке
+            files_context = ""
+            if files_data:
+                file_names = [f.get('original_name', 'unknown') for f in files_data]
+                files_context = ", ".join(file_names)
+
             return self._get_fallback_response(message, tool_type, files_context)
 
     def _get_fallback_response(self, message: str, tool_type: str = "default", files_context: str = "") -> str:
@@ -181,57 +338,63 @@ class AIService:
         return fallback_responses.get(tool_type, fallback_responses["default"])
 
     async def analyze_image(self, image_path: str, prompt: str = "") -> str:
-        """Анализ изображения (заглушка для будущей реализации)"""
+        """Анализ изображения через GPT-4 Vision"""
         try:
-            # В будущей версии здесь будет реальный анализ изображения через GPT-4 Vision
+            if self.model not in self.vision_models:
+                return f"📸 Модель {self.model} не поддерживает анализ изображений. Используйте gpt-4o или gpt-4o-mini."
+
             base64_image = self.encode_image_to_base64(image_path)
             if not base64_image:
                 return "Не удалось обработать изображение."
 
-            # Заглушка для демонстрации
-            image_name = Path(image_path).name
-            analysis_prompt = prompt or "Опиши что ты видишь на этом изображении."
+            analysis_prompt = prompt or "Подробно опиши что ты видишь на этом изображении."
+            mime_type = self.get_image_mime_type(image_path)
 
-            return f"📸 Анализ изображения '{image_name}': В данной демо-версии анализ изображений " \
-                   f"недоступен. В полной версии с GPT-4 Vision я смогу подробно описать содержимое, " \
-                   f"стиль, цвета и дать рекомендации по вашему запросу: '{analysis_prompt}'"
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=[{
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": analysis_prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:{mime_type};base64,{base64_image}",
+                                "detail": "auto"
+                            }
+                        }
+                    ]
+                }],
+                max_tokens=1000
+            )
+
+            return response.choices[0].message.content
 
         except Exception as e:
             logger.error(f"Image analysis error: {e}")
             return f"Ошибка при анализе изображения: {str(e)}"
 
-    async def analyze_document(self, file_path: str, file_type: str) -> str:
-        """Анализ документов (заглушка для будущей реализации)"""
+    async def analyze_document(self, file_path: str, file_type: str, prompt: str = "") -> str:
+        """Анализ документов с извлечением текста"""
         try:
             file_name = Path(file_path).name
+            extracted_text = await self.extract_text_from_file(file_path, file_type)
 
-            if "pdf" in file_type:
-                return f"📄 PDF документ '{file_name}': В демо-версии анализ PDF недоступен. " \
-                       f"В полной версии я смогу извлечь текст и проанализировать содержимое."
+            if not extracted_text or extracted_text.startswith("Ошибка"):
+                return extracted_text
 
-            elif "word" in file_type or "document" in file_type:
-                return f"📝 Word документ '{file_name}': В демо-версии анализ документов недоступен. " \
-                       f"В полной версии я смогу прочитать и проанализировать текст."
+            analysis_prompt = prompt or f"Проанализируй содержимое документа '{file_name}' и дай краткое содержание."
 
-            elif "excel" in file_type or "spreadsheet" in file_type:
-                return f"📊 Excel таблица '{file_name}': В демо-версии анализ таблиц недоступен. " \
-                       f"В полной версии я смогу проанализировать данные и создать отчеты."
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=[{
+                    "role": "user",
+                    "content": f"{analysis_prompt}\n\nСодержимое файла:\n{extracted_text}"
+                }],
+                max_tokens=1000
+            )
 
-            elif file_type == "text/plain":
-                # Для текстовых файлов можем попробовать прочитать содержимое
-                try:
-                    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                        content = f.read(1000)  # Читаем первые 1000 символов
-
-                    return f"📝 Текстовый файл '{file_name}': Содержит {len(content)} символов. " \
-                           f"Начало файла: '{content[:200]}...'"
-
-                except Exception:
-                    return f"📝 Текстовый файл '{file_name}': Не удалось прочитать содержимое."
-
-            else:
-                return f"📎 Файл '{file_name}': Тип {file_type} поддерживается для загрузки, " \
-                       f"но анализ содержимого в демо-версии недоступен."
+            return response.choices[0].message.content
 
         except Exception as e:
             logger.error(f"Document analysis error: {e}")
@@ -246,35 +409,36 @@ class AIService:
                 max_tokens=5
             )
             return True
-        except:
+        except Exception as e:
+            logger.error(f"Health check failed: {e}")
             return False
 
     async def get_file_suggestions(self, file_type: str, file_name: str) -> str:
         """Получение предложений по работе с файлом"""
         suggestions = {
             'image': [
-                "Опишите, что вы хотите создать на основе этого изображения",
+                "Опишите, что вы видите на изображении",
                 "Нужна ли обработка или редактирование изображения?",
                 "Хотите создать похожее изображение в другом стиле?",
                 "Нужен анализ композиции, цветов или стиля?"
             ],
             'pdf': [
-                "Нужно ли извлечь основные идеи из документа?",
-                "Хотите создать краткое содержание?",
-                "Нужна помощь с пониманием сложных частей?",
-                "Требуется анализ структуры документа?"
+                "Извлечь основные идеи из документа",
+                "Создать краткое содержание",
+                "Найти ключевые моменты и выводы",
+                "Проанализировать структуру документа"
             ],
             'document': [
-                "Нужна проверка грамматики и стиля?",
-                "Хотите улучшить структуру текста?",
-                "Требуется сократить или расширить содержание?",
-                "Нужна помощь с форматированием?"
+                "Проверить грамматику и стиль",
+                "Улучшить структуру текста",
+                "Сократить или расширить содержание",
+                "Переформатировать документ"
             ],
             'spreadsheet': [
-                "Нужен анализ данных в таблице?",
-                "Хотите создать графики или диаграммы?",
-                "Требуется помощь с формулами?",
-                "Нужна интерпретация результатов?"
+                "Проанализировать данные в таблице",
+                "Найти закономерности и тенденции",
+                "Создать выводы на основе данных",
+                "Проверить расчеты и формулы"
             ]
         }
 
@@ -289,7 +453,7 @@ class AIService:
         file_suggestions = suggestions.get(file_category, suggestions['document'])
         suggestion_text = "\n".join([f"• {s}" for s in file_suggestions])
 
-        return f"📎 Файл '{file_name}' загружен! Вот что я могу с ним сделать:\n\n{suggestion_text}"
+        return f"📎 Файл '{file_name}' успешно загружен и обработан! Вот что я могу с ним сделать:\n\n{suggestion_text}"
 
 
 # Глобальный экземпляр AI сервиса

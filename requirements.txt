@@ -17,3 +17,10 @@ charset-normalizer
 click
 h11
 starlette
+
+# Новые зависимости для обработки файлов
+PyPDF2
+python-docx
+pandas
+openpyxl
+xlrd

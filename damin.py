@@ -1,4 +1,3 @@
-# main.py
 from fastapi import FastAPI, HTTPException, Depends, status, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -309,13 +308,23 @@ async def get_gpt_response(message: str, context: Dict[str, Any] = {}) -> str:
         if chat_id and chat_id in chat_storage:
             chat_history = chat_storage[chat_id]["messages"]
 
-        # Добавляем информацию о файлах в контекст
-        files_context = context.get('files_context', '')
-        if files_context:
-            message = f"{message}\n\nПрикрепленные файлы: {files_context}"
+        # Получаем данные файлов из последнего сообщения
+        files_data = []
+        if chat_id and chat_id in chat_storage:
+            messages = chat_storage[chat_id]["messages"]
+            if messages:
+                last_message = messages[-1]
+                if last_message.get("files") and last_message.get("type") == "user":
+                    files_data = last_message["files"]
+                    logger.info(f"Found {len(files_data)} files in last message for AI processing")
 
-        # Вызываем GPT
-        response = await ai_service.get_response(message, context, chat_history)
+        # Вызываем GPT с файлами
+        response = await ai_service.get_response(
+            message,
+            context,
+            chat_history,
+            files_data
+        )
         return response
 
     except Exception as e:
