@@ -5,7 +5,7 @@ from typing import Dict, Optional
 import logging
 from datetime import datetime, timedelta
 import jwt
-from ..config import settings
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 

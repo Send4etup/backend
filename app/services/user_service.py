@@ -4,10 +4,10 @@
 """
 from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
-from sqlalchemy.sql import func
-from app.repositories.user_repository import UserRepository
-from app.models import User
 import logging
+
+from app.models import User
+from app.repositories.user_repository import UserRepository
 
 logger = logging.getLogger(__name__)
 

@@ -377,6 +377,129 @@ async def send_message(
         )
 
 
+@app.post("/api/chat/send-with-files")
+async def send_message_with_files(
+        message: str = Form(...),
+        chat_id: Optional[str] = Form(None),
+        tool_type: Optional[str] = Form(None),
+        files: List[UploadFile] = File(default=[]),
+        user: User = Depends(get_current_user),
+        services: ServiceContainer = Depends(get_services)
+):
+    """
+    Отправка сообщения с файлами одним запросом
+    Этот endpoint КРИТИЧНО нужен для работы фронтенда
+    """
+    try:
+        logger.info(f"Sending message with {len(files)} files from user {user.user_id}")
+
+        # 1. Создаем или используем существующий чат
+        if not chat_id:
+            chat_title = f"Чат {datetime.now().strftime('%d.%m %H:%M')}"
+            chat_type = tool_type or "general"
+
+            chat = services.chat_service.create_chat(
+                user.user_id,
+                chat_title,
+                chat_type
+            )
+            chat_id = chat.chat_id
+            logger.info(f"Created new chat: {chat_id}")
+        else:
+            # Проверяем что чат принадлежит пользователю
+            chat = services.chat_service.get_chat(chat_id, user.user_id)
+            if not chat:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Chat not found or access denied"
+                )
+
+        # 2. Загружаем файлы если есть
+        uploaded_files = []
+        file_errors = []
+
+        for file in files:
+            if not file.filename:
+                continue
+
+            try:
+                # Проверяем лимиты подписки
+                limits = user.get_subscription_limits()
+                max_size = limits["max_file_size_mb"] * 1024 * 1024
+
+                content = await file.read()
+                if len(content) > max_size:
+                    file_errors.append(f"{file.filename}: превышен лимит {limits['max_file_size_mb']} MB")
+                    continue
+
+                await file.seek(0)  # Возвращаем указатель
+
+                # Сохраняем файл
+                file_data = await save_uploaded_file(file, user, services)
+                uploaded_files.append(file_data)
+
+                logger.info(f"Uploaded file: {file.filename} -> {file_data['file_id']}")
+
+            except Exception as e:
+                logger.error(f"Error uploading file {file.filename}: {e}")
+                file_errors.append(f"{file.filename}: {str(e)}")
+
+        # 3. Отправляем сообщение пользователя
+        user_message = None
+        if message.strip():
+            user_message = services.chat_service.send_message(
+                chat_id, user.user_id, message, "user"
+            )
+            logger.info(f"Sent user message: {user_message.message_id}")
+
+            # Связываем файлы с сообщением
+            for file_data in uploaded_files:
+                try:
+                    # Обновляем attachment в БД
+                    attachment = services.file_service.attachment_repo.get_by_id(file_data["file_id"])
+                    if attachment:
+                        attachment.message_id = user_message.message_id
+                        services.file_service.attachment_repo.db.commit()
+                except Exception as e:
+                    logger.error(f"Error linking file to message: {e}")
+
+        # 4. Списываем токены за сообщение
+        tokens_used = 1  # Базовая стоимость сообщения
+        tokens_used += len(uploaded_files) * 2  # +2 токена за каждый файл
+
+        if user.tokens_balance >= tokens_used:
+            services.user_service.user_repo.deduct_tokens(user.user_id, tokens_used)
+            logger.info(f"Deducted {tokens_used} tokens from user {user.user_id}")
+        else:
+            logger.warning(f"User {user.user_id} has insufficient tokens: {user.tokens_balance} < {tokens_used}")
+
+        # 5. Формируем ответ
+        response_data = {
+            "status": "success",
+            "chat_id": chat_id,
+            "message_id": user_message.message_id if user_message else None,
+            "uploaded_files": uploaded_files,
+            "file_errors": file_errors,
+            "tokens_used": tokens_used,
+            "timestamp": datetime.now().isoformat()
+        }
+
+        # Если есть только файлы без текста
+        if not message.strip() and uploaded_files:
+            response_data["message"] = f"Загружено файлов: {len(uploaded_files)}"
+
+        return response_data
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in send_message_with_files: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to send message: {str(e)}"
+        )
+
+
 @app.post("/api/chat/ai-response")
 async def get_ai_response(
         request: AIResponseRequest,
@@ -437,66 +560,78 @@ async def get_ai_response(
 # =====================================================
 
 async def save_uploaded_file(file: UploadFile, user: User, services: ServiceContainer) -> Dict[str, Any]:
-    """Сохранение загруженного файла"""
-    # Читаем содержимое
+    """Сохранение загруженного файла с полной обработкой"""
+
+    # Генерируем уникальный ID файла
+    file_id = str(uuid.uuid4())
+
+    # Определяем MIME тип
     content = await file.read()
     await file.seek(0)
 
-    # Проверяем размер
-    if len(content) > MAX_FILE_SIZE:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"File too large. Max size: {MAX_FILE_SIZE // (1024 * 1024)} MB"
-        )
+    try:
+        import magic
+        detected_type = magic.from_buffer(content, mime=True)
+        file_type = detected_type if detected_type else file.content_type
+    except:
+        file_type = file.content_type or 'application/octet-stream'
 
-    # Определяем тип файла
-    file_type = magic.from_buffer(content, mime=True)
+    # Проверяем поддерживаемые типы
+    all_supported_types = SUPPORTED_IMAGE_TYPES | SUPPORTED_DOCUMENT_TYPES | SUPPORTED_AUDIO_TYPES
 
-    # Проверяем поддерживаемый тип
-    all_supported = SUPPORTED_IMAGE_TYPES | SUPPORTED_DOCUMENT_TYPES | SUPPORTED_AUDIO_TYPES
-    if file_type not in all_supported:
+    if file_type not in all_supported_types:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Unsupported file type: {file_type}"
         )
 
-    # Создаем путь для файла
-    user_dir = UPLOAD_DIR / str(user.user_id)
+    # Создаем директорию пользователя
+    user_dir = UPLOAD_DIR / user.user_id
     user_dir.mkdir(exist_ok=True)
 
-    file_id = str(uuid.uuid4())
-    file_extension = Path(file.filename).suffix if file.filename else ""
+    # Определяем расширение файла
+    original_name = file.filename or f"file_{file_id}"
+    file_extension = Path(original_name).suffix or _get_extension_by_mime(file_type)
+
+    # Создаем путь файла
     safe_filename = f"{file_id}{file_extension}"
     file_path = user_dir / safe_filename
 
     # Сохраняем файл на диск
-    with open(file_path, "wb") as f:
-        f.write(content)
+    with open(file_path, "wb") as buffer:
+        buffer.write(content)
 
-    # Создаем превью для изображений
+    # Создаем thumbnail для изображений
     thumbnail_path = None
     if file_type in SUPPORTED_IMAGE_TYPES:
         try:
             thumbnail_path = await create_thumbnail(file_path, user_dir)
         except Exception as e:
-            logger.warning(f"Failed to create thumbnail: {e}")
+            logger.warning(f"Failed to create thumbnail for {file_path}: {e}")
 
     # Сохраняем в БД
-    attachment = services.file_service.save_file(
+    attachment = services.file_service.attachment_repo.create(
+        file_id=file_id,
         user_id=user.user_id,
         file_name=safe_filename,
+        original_name=original_name,
         file_path=str(file_path),
         file_type=file_type,
-        file_size=len(content)
+        file_size=len(content),
+        thumbnail_path=thumbnail_path
     )
 
+    logger.info(f"File saved: {file_path} ({len(content)} bytes)")
+
     return {
-        "file_id": attachment.file_id,
-        "file_name": attachment.file_name,
-        "file_type": attachment.file_type,
-        "file_size": attachment.file_size,
-        "file_url": f"/uploads/{user.user_id}/{safe_filename}",
-        "thumbnail_url": f"/uploads/{user.user_id}/thumb_{safe_filename}" if thumbnail_path else None
+        "file_id": file_id,
+        "file_name": safe_filename,
+        "original_name": original_name,
+        "file_type": file_type,
+        "file_size": len(content),
+        "file_size_mb": round(len(content) / 1024 / 1024, 2),
+        "thumbnail_path": thumbnail_path,
+        "uploaded_at": attachment.uploaded_at.isoformat() if attachment.uploaded_at else datetime.now().isoformat()
     }
 
 
@@ -724,6 +859,38 @@ async def manual_cleanup(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Cleanup failed"
         )
+
+
+def _get_extension_by_mime(mime_type: str) -> str:
+    """Получение расширения файла по MIME типу"""
+    mime_extensions = {
+        # Изображения
+        'image/jpeg': '.jpg',
+        'image/png': '.png',
+        'image/gif': '.gif',
+        'image/webp': '.webp',
+        'image/bmp': '.bmp',
+
+        # Документы
+        'application/pdf': '.pdf',
+        'application/msword': '.doc',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+        'text/plain': '.txt',
+        'application/rtf': '.rtf',
+        'text/csv': '.csv',
+        'application/vnd.ms-excel': '.xls',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+
+        # Аудио
+        'audio/mpeg': '.mp3',
+        'audio/wav': '.wav',
+        'audio/m4a': '.m4a',
+        'audio/aac': '.aac',
+        'audio/webm': '.webm',
+        'audio/ogg': '.ogg'
+    }
+
+    return mime_extensions.get(mime_type, '.bin')
 
 
 # =====================================================
