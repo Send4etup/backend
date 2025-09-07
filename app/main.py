@@ -1,41 +1,53 @@
+# app/main.py (ПОЛНОСТЬЮ ОБНОВЛЕННАЯ ВЕРСИЯ)
+"""
+ТоварищБот Backend API с полной SQLite интеграцией
+"""
 from fastapi import FastAPI, HTTPException, Depends, status, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import uuid
 import asyncio
-import random
 import os
 import json
-import shutil
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 from dotenv import load_dotenv
-import aiofiles
-import magic  # для определения типа файла
-from PIL import Image
-import hashlib
-import mimetypes
-
 from sqlalchemy.orm import Session
 
+# Импорты наших модулей
 from app.database import get_db
-from app.models import Chat, Message
-from app.services.ai_service import get_ai_service, AIService
-from app.services.cleanup_service import get_cleanup_service
+from app.dependencies import (
+    get_services, get_current_user, require_tokens,
+    ServiceContainer
+)
+from app.models import User, Chat, Message, Attachment
+from app.services.ai_service import get_ai_service
+from app.startup import startup_event, shutdown_event
+import mimetypes
+import magic
+from PIL import Image
 
 load_dotenv()
-AIService()
 
 # Настройка логирования
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="School Assistant API", version="1.0.0")
+# Создаем FastAPI приложение
+app = FastAPI(
+    title="ТоварищБот API",
+    description="Образовательный ИИ-помощник для учеников и студентов",
+    version="2.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc"
+)
 
 # CORS настройки
 app.add_middleware(
@@ -46,11 +58,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# События жизненного цикла
+app.add_event_handler("startup", startup_event)
+app.add_event_handler("shutdown", shutdown_event)
+
 # Создаем директории для файлов
-UPLOAD_DIR = Path("../uploads")
+UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
-# Поддерживаемые типы файлов
+# Константы
 SUPPORTED_IMAGE_TYPES = {
     'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'
 }
@@ -62,10 +78,9 @@ SUPPORTED_DOCUMENT_TYPES = {
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 }
 SUPPORTED_AUDIO_TYPES = {
-   'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/wave',
-   'audio/x-wav', 'audio/m4a', 'audio/mp4', 'audio/aac',
-   'audio/webm', 'audio/ogg', 'audio/vorbis', 'audio/flac',
-   'audio/x-flac', 'audio/3gpp', 'audio/amr', 'audio/opus'
+    'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/wave',
+    'audio/x-wav', 'audio/m4a', 'audio/mp4', 'audio/aac',
+    'audio/webm', 'audio/ogg', 'audio/vorbis'
 }
 
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
@@ -74,1051 +89,654 @@ MAX_FILES_PER_MESSAGE = 10
 # Монтируем статические файлы
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
-# Схема авторизации (опционально)
-security = HTTPBearer(auto_error=False)
 
-# Временное хранилище
-chat_storage = {}
-user_storage = {}
-file_storage = {}
-
-# Создаем тестового пользователя по умолчанию
-DEFAULT_USER = {
-    "id": 1,
-    "telegram_id": 123456789,
-    "name": "Test User",
-    "current_points": 0,
-    "total_points": 0,
-    "level": 1,
-    "created_at": datetime.now().isoformat()
-}
-user_storage[1] = DEFAULT_USER
-
-
-# Pydantic модели
+# Pydantic модели для API
 class TelegramAuthRequest(BaseModel):
     telegram_id: Optional[int] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     username: Optional[str] = None
     initData: Optional[str] = None
-    user: Optional[Dict[str, Any]] = None
+
+
+class CreateChatRequest(BaseModel):
+    title: str
+    chat_type: Optional[str] = "general"
 
 
 class SendMessageRequest(BaseModel):
     message: str
-    tool_type: Optional[str] = None
     chat_id: Optional[str] = None
+    tool_type: Optional[str] = None
 
 
 class AIResponseRequest(BaseModel):
     message: str
+    chat_id: Optional[str] = None
     context: Optional[Dict[str, Any]] = {}
 
 
-class CreateChatRequest(BaseModel):
-    title: Optional[str] = "Новый чат"
-
-
-class CreateToolChatRequest(BaseModel):
-    tool_type: str
-    tool_title: str
-    description: Optional[str] = None
-
-
-class UserProfileUpdate(BaseModel):
-    name: Optional[str] = None
-    school_name: Optional[str] = None
-    class_name: Optional[str] = None
-
-
-class FileInfo(BaseModel):
-    file_id: str
-    original_name: str
-    file_path: str
-    file_url: str
-    file_type: str
-    file_size: int
+class UserProfileResponse(BaseModel):
+    user_id: str
+    telegram_id: int
+    username: Optional[str]
+    display_name: str
+    subscription_type: str
+    tokens_balance: int
+    tokens_used: int
+    subscription_limits: Dict[str, Any]
     created_at: str
+    last_activity: str
 
 
-# Модели ответов
-class AuthResponse(BaseModel):
-    token: str
-    user: Dict[str, Any]
+class ChatResponse(BaseModel):
+    chat_id: str
+    title: str
+    type: str
+    type_display: str
+    messages_count: int
+    tokens_used: int
+    created_at: str
+    updated_at: str
+    last_message: Optional[str] = None
+    last_activity: str
 
 
 class MessageResponse(BaseModel):
-    message_id: str
+    message_id: int
     chat_id: str
-    status: str
-    timestamp: str
-    files: Optional[List[FileInfo]] = []
+    role: str
+    content: str
+    tokens_count: int
+    created_at: str
+    attachments: List[Dict[str, Any]] = []
 
 
-class AIResponse(BaseModel):
-    message: str
-    response_id: str
-    timestamp: str
-
-
-class FileUploadResponse(BaseModel):
+class FileResponse(BaseModel):
     file_id: str
-    file_info: FileInfo
-    status: str
+    file_name: str
+    file_type: str
+    file_size: int
+    file_size_mb: float
+    category: str
+    icon: str
+    uploaded_at: str
 
 
-# Утилиты для работы с файлами
-def get_file_hash(file_content: bytes) -> str:
-    """Генерация хеша файла"""
-    return hashlib.md5(file_content).hexdigest()
+# =====================================================
+# АУТЕНТИФИКАЦИЯ
+# =====================================================
+
+@app.post("/api/auth/telegram")
+async def telegram_auth(
+        request: TelegramAuthRequest,
+        services: ServiceContainer = Depends(get_services)
+):
+    """Авторизация через Telegram"""
+    try:
+        user = await services.user_service.authenticate_or_create_user(
+            request.dict(exclude_none=True)
+        )
+
+        # TODO: Генерация JWT токена
+        mock_token = f"mock_token_{user.telegram_id}_{int(datetime.now().timestamp())}"
+
+        return {
+            "token": mock_token,
+            "user": {
+                "user_id": user.user_id,
+                "telegram_id": user.telegram_id,
+                "username": user.username,
+                "display_name": user.display_name,
+                "subscription_type": user.subscription_type,
+                "tokens_balance": user.tokens_balance
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Authentication error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
 
-def get_safe_filename(filename: str) -> str:
-    """Безопасное имя файла"""
-    # Удаляем опасные символы
-    safe_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_"
-    safe_name = "".join(c for c in filename if c in safe_chars)
-    return safe_name[:100] if safe_name else "unnamed_file"
+# =====================================================
+# ПОЛЬЗОВАТЕЛИ
+# =====================================================
+
+@app.get("/api/user/profile", response_model=UserProfileResponse)
+async def get_user_profile(
+        user: User = Depends(get_current_user),
+        services: ServiceContainer = Depends(get_services)
+):
+    """Получение профиля пользователя"""
+    profile = services.user_service.get_user_profile(user.user_id)
+
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User profile not found"
+        )
+
+    return UserProfileResponse(
+        **profile,
+        display_name=user.display_name,
+        subscription_limits=user.get_subscription_limits()
+    )
 
 
-def is_supported_file_type(file_type: str) -> bool:
-    """Проверка поддерживаемого типа файла"""
-    return file_type in SUPPORTED_IMAGE_TYPES or file_type in SUPPORTED_DOCUMENT_TYPES or file_type in SUPPORTED_AUDIO_TYPES
+# =====================================================
+# ЧАТЫ
+# =====================================================
 
-def is_image_file(file_type: str) -> bool:
-    """Проверка, является ли файл изображением"""
-    return file_type in SUPPORTED_IMAGE_TYPES
+@app.post("/api/chat/create", response_model=ChatResponse)
+async def create_chat(
+        request: CreateChatRequest,
+        user: User = Depends(get_current_user),
+        services: ServiceContainer = Depends(get_services)
+):
+    """Создание нового чата"""
+    try:
+        chat = services.chat_service.create_chat(
+            user.user_id,
+            request.title,
+            request.chat_type
+        )
 
-def is_audio_file(file_type: str) -> bool:
-    """Проверка, является ли файл аудио"""
-    return file_type in SUPPORTED_AUDIO_TYPES
+        return ChatResponse(
+            chat_id=chat.chat_id,
+            title=chat.title,
+            type=chat.type,
+            type_display=chat.get_chat_type_display(),
+            messages_count=chat.messages_count,
+            tokens_used=chat.tokens_used,
+            created_at=chat.created_at.isoformat(),
+            updated_at=chat.updated_at.isoformat(),
+            last_activity=chat.last_activity.isoformat()
+        )
 
-async def save_uploaded_file(file: UploadFile, user_id: int) -> FileInfo:
+    except Exception as e:
+        logger.error(f"Error creating chat: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+@app.get("/api/chat/history", response_model=List[ChatResponse])
+async def get_chat_history(
+        limit: int = 10,
+        user: User = Depends(get_current_user),
+        services: ServiceContainer = Depends(get_services)
+):
+    """Получение истории чатов пользователя"""
+    try:
+        chats_data = services.chat_service.get_user_chats(user.user_id, limit)
+
+        return [
+            ChatResponse(
+                chat_id=chat["chat_id"],
+                title=chat["title"],
+                type=chat["type"],
+                type_display=chat.get("type_display", chat["type"]),
+                messages_count=chat["messages_count"],
+                tokens_used=chat["tokens_used"],
+                created_at=chat["created_at"],
+                updated_at=chat["updated_at"],
+                last_message=chat.get("last_message"),
+                last_activity=chat.get("last_message_time", chat["created_at"])
+            )
+            for chat in chats_data
+        ]
+
+    except Exception as e:
+        logger.error(f"Error getting chat history: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get chat history"
+        )
+
+
+@app.get("/api/chat/{chat_id}/messages", response_model=List[MessageResponse])
+async def get_chat_messages(
+        chat_id: str,
+        limit: int = 50,
+        user: User = Depends(get_current_user),
+        services: ServiceContainer = Depends(get_services)
+):
+    """Получение сообщений чата"""
+    try:
+        messages_data = services.chat_service.get_chat_history(chat_id, user.user_id, limit)
+
+        return [
+            MessageResponse(
+                message_id=msg["message_id"],
+                chat_id=chat_id,
+                role=msg["role"],
+                content=msg["content"],
+                tokens_count=msg["tokens_count"],
+                created_at=msg["created_at"],
+                attachments=[]  # TODO: добавить вложения
+            )
+            for msg in messages_data
+        ]
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Error getting chat messages: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get chat messages"
+        )
+
+
+# =====================================================
+# СООБЩЕНИЯ
+# =====================================================
+
+@app.post("/api/chat/send")
+async def send_message(
+        request: SendMessageRequest,
+        user: User = Depends(require_tokens(1)),
+        services: ServiceContainer = Depends(get_services)
+):
+    """Отправка текстового сообщения"""
+    try:
+        # Создаем чат если не существует
+        if not request.chat_id:
+            chat = services.chat_service.create_chat(
+                user.user_id,
+                f"Чат {datetime.now().strftime('%d.%m %H:%M')}"
+            )
+            chat_id = chat.chat_id
+        else:
+            chat_id = request.chat_id
+
+        # Отправляем сообщение пользователя
+        user_message = services.chat_service.send_message(
+            chat_id, user.user_id, request.message, "user"
+        )
+
+        return {
+            "message_id": user_message.message_id,
+            "chat_id": chat_id,
+            "status": "sent",
+            "timestamp": user_message.created_at.isoformat()
+        }
+
+    except Exception as e:
+        logger.error(f"Error sending message: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+@app.post("/api/chat/ai-response")
+async def get_ai_response(
+        request: AIResponseRequest,
+        user: User = Depends(require_tokens(2)),
+        services: ServiceContainer = Depends(get_services)
+):
+    """Получение ответа от ИИ"""
+    try:
+        if not request.chat_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Chat ID is required"
+            )
+
+        # Получаем контекст чата для ИИ
+        chat_history = services.chat_service.get_chat_for_ai_context(request.chat_id)
+
+        # Получаем ответ от ИИ
+        ai_service = get_ai_service()
+        if not ai_service:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="AI service is not available"
+            )
+
+        ai_response = await ai_service.get_response(
+            request.message,
+            request.context,
+            chat_history,
+            []  # Файлы пока пустые
+        )
+
+        # Сохраняем ответ ИИ в чат
+        ai_message = services.chat_service.send_message(
+            request.chat_id, user.user_id, ai_response, "assistant", tokens_count=2
+        )
+
+        # Списываем токены
+        services.user_service.use_tokens(user.user_id, 2)
+
+        return {
+            "message_id": ai_message.message_id,
+            "response": ai_response,
+            "tokens_used": 2,
+            "timestamp": ai_message.created_at.isoformat()
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting AI response: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+# =====================================================
+# ФАЙЛЫ
+# =====================================================
+
+async def save_uploaded_file(file: UploadFile, user: User, services: ServiceContainer) -> Dict[str, Any]:
     """Сохранение загруженного файла"""
-    # Читаем содержимое файла
+    # Читаем содержимое
     content = await file.read()
-    await file.seek(0)  # Возвращаем указатель в начало
+    await file.seek(0)
 
     # Проверяем размер
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(
-            status_code=413,
-            detail=f"Файл слишком большой. Максимальный размер: {MAX_FILE_SIZE // (1024 * 1024)} MB"
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File too large. Max size: {MAX_FILE_SIZE // (1024 * 1024)} MB"
         )
 
     # Определяем тип файла
-    file_type = file.content_type
-    if not file_type:
-        file_type = mimetypes.guess_type(file.filename)[0] or 'application/octet-stream'
+    file_type = magic.from_buffer(content, mime=True)
 
     # Проверяем поддерживаемый тип
-    if not is_supported_file_type(file_type):
+    all_supported = SUPPORTED_IMAGE_TYPES | SUPPORTED_DOCUMENT_TYPES | SUPPORTED_AUDIO_TYPES
+    if file_type not in all_supported:
         raise HTTPException(
-            status_code=400,
-            detail=f"Неподдерживаемый тип файла: {file_type}"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported file type: {file_type}"
         )
 
-    # Генерируем уникальное имя файла
-    file_hash = get_file_hash(content)
-    file_extension = Path(file.filename).suffix.lower() if file.filename else ""
-    safe_filename = get_safe_filename(file.filename or "file")
-
-    file_id = str(uuid.uuid4())
-    unique_filename = f"{file_id}_{file_hash[:8]}{file_extension}"
-
-    # Создаем путь для сохранения
-    user_dir = UPLOAD_DIR / str(user_id)
+    # Создаем путь для файла
+    user_dir = UPLOAD_DIR / str(user.user_id)
     user_dir.mkdir(exist_ok=True)
 
-    file_path = user_dir / unique_filename
+    file_id = str(uuid.uuid4())
+    file_extension = Path(file.filename).suffix if file.filename else ""
+    safe_filename = f"{file_id}{file_extension}"
+    file_path = user_dir / safe_filename
 
-    # Сохраняем файл
-    async with aiofiles.open(file_path, 'wb') as f:
-        await f.write(content)
+    # Сохраняем файл на диск
+    with open(file_path, "wb") as f:
+        f.write(content)
 
-    # Если это изображение, создаем превью (опционально)
-    if is_image_file(file_type):
+    # Создаем превью для изображений
+    thumbnail_path = None
+    if file_type in SUPPORTED_IMAGE_TYPES:
         try:
-            await create_image_thumbnail(file_path)
+            thumbnail_path = await create_thumbnail(file_path, user_dir)
         except Exception as e:
-            logger.warning(f"Failed to create thumbnail for {file_path}: {e}")
+            logger.warning(f"Failed to create thumbnail: {e}")
 
-    # Создаем информацию о файле
-    file_info = FileInfo(
-        file_id=file_id,
-        original_name=file.filename or "unnamed",
+    # Сохраняем в БД
+    attachment = services.file_service.save_file(
+        user_id=user.user_id,
+        file_name=safe_filename,
         file_path=str(file_path),
-        file_url=f"/uploads/{user_id}/{unique_filename}",
         file_type=file_type,
-        file_size=len(content),
-        created_at=datetime.now().isoformat()
+        file_size=len(content)
     )
 
-    # Сохраняем в storage
-    file_storage[file_id] = {
-        **file_info.dict(),
-        "user_id": user_id,
-        "hash": file_hash
+    return {
+        "file_id": attachment.file_id,
+        "file_name": attachment.file_name,
+        "file_type": attachment.file_type,
+        "file_size": attachment.file_size,
+        "file_url": f"/uploads/{user.user_id}/{safe_filename}",
+        "thumbnail_url": f"/uploads/{user.user_id}/thumb_{safe_filename}" if thumbnail_path else None
     }
 
-    logger.info(f"File saved: {file_id} ({file.filename}) by user {user_id}")
 
-    return file_info
-
-
-async def create_image_thumbnail(image_path: Path, max_size: int = 300):
-    """Создание превью для изображения"""
+async def create_thumbnail(image_path: Path, output_dir: Path, size: tuple = (200, 200)) -> str:
+    """Создание превью изображения"""
     try:
-        thumbnail_path = image_path.parent / f"thumb_{image_path.name}"
-
         with Image.open(image_path) as img:
-            img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
-            img.save(thumbnail_path, optimize=True, quality=85)
+            img.thumbnail(size, Image.Resampling.LANCZOS)
 
-        logger.info(f"Thumbnail created: {thumbnail_path}")
-    except Exception as e:
-        logger.error(f"Error creating thumbnail for {image_path}: {e}")
+            thumbnail_name = f"thumb_{image_path.name}"
+            thumbnail_path = output_dir / thumbnail_name
 
+            # Конвертируем в RGB если нужно
+            if img.mode in ("RGBA", "P"):
+                img = img.convert("RGB")
 
-def analyze_file_for_ai(file_info: FileInfo) -> str:
-    """Анализ файла для передачи контекста в AI"""
-    context = f"Файл: {file_info.original_name} ({file_info.file_type}), размер: {file_info.file_size // 1024} KB"
-
-    if is_image_file(file_info.file_type):
-        context += " [Изображение]"
-    elif is_audio_file(file_info.file_type):
-        context += " [Аудиофайл]"
-    elif "pdf" in file_info.file_type:
-        context += " [PDF документ]"
-    elif "word" in file_info.file_type or "document" in file_info.file_type:
-        context += " [Текстовый документ]"
-    elif "excel" in file_info.file_type or "spreadsheet" in file_info.file_type:
-        context += " [Электронная таблица]"
-
-    return context
-
-
-# Вспомогательные функции
-def generate_mock_token(telegram_id: int) -> str:
-    return f"mock_token_{telegram_id}_{int(datetime.now().timestamp())}"
-
-
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """Получение текущего пользователя (без проверки токена)"""
-    return DEFAULT_USER
-
-
-async def get_gpt_response(message: str, context: Dict[str, Any] = {}) -> str:
-    """Получить ответ от GPT или fallback"""
-    ai_service = get_ai_service()
-
-    if ai_service is None:
-        print("AI сервис не запустился!")
-        return await simulate_ai_response(message, context)
-
-    try:
-        # Получаем историю чата для контекста
-        chat_id = context.get('chat_id')
-        chat_history = []
-
-        if chat_id and chat_id in chat_storage:
-            chat_history = chat_storage[chat_id]["messages"]
-
-        # Получаем данные файлов из последнего сообщения
-        files_data = []
-        if chat_id and chat_id in chat_storage:
-            messages = chat_storage[chat_id]["messages"]
-            if messages:
-                last_message = messages[-1]
-                if last_message.get("files") and last_message.get("type") == "user":
-                    files_data = last_message["files"]
-                    logger.info(f"Found {len(files_data)} files in last message for AI processing")
-
-        # Вызываем GPT с файлами (файлы будут автоматически удалены после обработки)
-        response = await ai_service.get_response(
-            message,
-            context,
-            chat_history,
-            files_data
-        )
-
-        # Удаляем информацию о файлах из storage после успешной обработки
-        if files_data:
-            for file_data in files_data:
-                file_id = file_data.get('file_id')
-                if file_id and file_id in file_storage:
-                    del file_storage[file_id]
-                    logger.info(f"File {file_id} removed from storage after processing")
-
-        return response
+            img.save(thumbnail_path, "JPEG", quality=85)
+            return str(thumbnail_path)
 
     except Exception as e:
-        logger.error(f"GPT error, falling back to static response: {e}")
-
-        # В случае ошибки тоже очищаем файлы
-        if context.get('chat_id') and context['chat_id'] in chat_storage:
-            messages = chat_storage[context['chat_id']]["messages"]
-            if messages:
-                last_message = messages[-1]
-                if last_message.get("files"):
-                    for file_data in last_message["files"]:
-                        file_id = file_data.get('file_id')
-                        file_path = file_data.get('file_path')
-
-                        # Удаляем файл с диска
-                        if file_path and os.path.exists(file_path):
-                            try:
-                                os.remove(file_path)
-                                logger.info(f"Cleaned up file after error: {file_path}")
-                            except Exception as cleanup_error:
-                                logger.warning(f"Failed to cleanup file {file_path}: {cleanup_error}")
-
-                        # Удаляем из storage
-                        if file_id and file_id in file_storage:
-                            del file_storage[file_id]
-
-        return await simulate_ai_response(message, context)
+        logger.error(f"Error creating thumbnail: {e}")
+        raise
 
 
-async def simulate_ai_response(message: str, context: Dict[str, Any] = {}) -> str:
-    """Статичная симуляция ИИ (fallback)"""
-    await asyncio.sleep(random.uniform(0.5, 1.0))
-
-    tool_type = context.get('tool_type')
-    files_context = context.get('files_context', '')
-
-    file_info = ""
-    if files_context:
-        file_info = f" Вижу прикрепленные файлы: {files_context}."
-
-    if tool_type == 'create_image':
-        return f"🎨 (Режим fallback) Понял! Хотите создать изображение: '{message}'.{file_info} Опишите подробнее стиль и детали!"
-    elif tool_type == 'coding':
-        return f"💻 (Режим fallback) Отличная задача по программированию! '{message}'{file_info} - давайте разберем пошагово."
-    elif tool_type == 'brainstorm':
-        return f"💡 (Режим fallback) Супер тема для мозгового штурма: '{message}'!{file_info} Вот несколько направлений для размышлений..."
-    elif tool_type == 'excuse':
-        return f"😅 (Режим fallback) Нужна отмазка для '{message}'?{file_info} Придумываю креативное объяснение!"
-    else:
-        return f"🤖 (Режим fallback) Интересный вопрос! По теме '{message}'{file_info} могу предложить несколько идей..."
-
-
-# АВТОРИЗАЦИЯ (упрощенная)
-@app.post("/api/auth/telegram", response_model=AuthResponse)
-async def simple_auth():
-    try:
-        token = "simple_token_123"
-        logger.info(f"User authenticated: {DEFAULT_USER['id']}")
-        return AuthResponse(token=token, user=DEFAULT_USER)
-    except Exception as e:
-        logger.error(f"Auth error: {e}")
-        raise HTTPException(status_code=400, detail="Authentication failed")
-
-
-# ПОЛЬЗОВАТЕЛЬ
-@app.get("/api/user/profile")
-async def get_user_profile(user=Depends(get_current_user)):
-    """Получение профиля пользователя"""
-    return user
-
-
-@app.patch("/api/user/profile")
-async def update_user_profile(
-        profile_data: UserProfileUpdate,
-        user=Depends(get_current_user)
-):
-    """Обновление профиля пользователя"""
-    user_id = user["id"]
-
-    if profile_data.name:
-        user["name"] = profile_data.name
-    if profile_data.school_name:
-        user["school_name"] = profile_data.school_name
-    if profile_data.class_name:
-        user["class_name"] = profile_data.class_name
-
-    user["updated_at"] = datetime.now().isoformat()
-    user_storage[user_id] = user
-
-    return user
-
-
-# ФАЙЛЫ
-@app.post("/api/files/upload", response_model=FileUploadResponse)
+@app.post("/api/files/upload", response_model=FileResponse)
 async def upload_file(
         file: UploadFile = File(...),
-        chat_id: Optional[str] = Form(None),
-        user=Depends(get_current_user)
+        user: User = Depends(get_current_user),
+        services: ServiceContainer = Depends(get_services)
 ):
-    """Загрузка одиночного файла"""
+    """Загрузка файла"""
     try:
-        file_info = await save_uploaded_file(file, user["id"])
+        # Проверяем лимиты подписки
+        limits = user.get_subscription_limits()
+        max_size = limits["max_file_size_mb"] * 1024 * 1024
 
-        return FileUploadResponse(
-            file_id=file_info.file_id,
-            file_info=file_info,
-            status="uploaded"
+        content = await file.read()
+        if len(content) > max_size:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"File too large for your subscription. Max: {limits['max_file_size_mb']} MB"
+            )
+
+        await file.seek(0)  # Возвращаем указатель
+
+        file_data = await save_uploaded_file(file, user, services)
+
+        # Получаем информацию о файле из БД
+        attachment = services.file_service.attachment_repo.get_by_id(file_data["file_id"])
+
+        return FileResponse(
+            file_id=attachment.file_id,
+            file_name=attachment.file_name,
+            file_type=attachment.file_type,
+            file_size=attachment.file_size,
+            file_size_mb=attachment.file_size_mb,
+            category=attachment.get_file_category(),
+            icon=attachment.get_file_icon(),
+            uploaded_at=attachment.uploaded_at.isoformat()
         )
+
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"File upload error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to upload file")
+        logger.error(f"Error uploading file: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to upload file"
+        )
 
 
-@app.get("/api/files/{file_id}", response_model=FileInfo)
-async def get_file_info(
-        file_id: str,
-        user=Depends(get_current_user)
+@app.get("/api/files", response_model=List[FileResponse])
+async def get_user_files(
+        limit: int = 50,
+        user: User = Depends(get_current_user),
+        services: ServiceContainer = Depends(get_services)
 ):
-    """Получение информации о файле"""
-    if file_id not in file_storage:
-        raise HTTPException(status_code=404, detail="File not found")
+    """Получение файлов пользователя"""
+    try:
+        attachments = services.file_service.attachment_repo.get_user_files(user.user_id, limit)
 
-    file_data = file_storage[file_id]
+        return [
+            FileResponse(
+                file_id=att.file_id,
+                file_name=att.file_name,
+                file_type=att.file_type,
+                file_size=att.file_size,
+                file_size_mb=att.file_size_mb,
+                category=att.get_file_category(),
+                icon=att.get_file_icon(),
+                uploaded_at=att.uploaded_at.isoformat()
+            )
+            for att in attachments
+        ]
 
-    # Проверяем права доступа
-    if file_data["user_id"] != user["id"]:
-        raise HTTPException(status_code=403, detail="Access denied")
-
-    return FileInfo(**file_data)
+    except Exception as e:
+        logger.error(f"Error getting user files: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get files"
+        )
 
 
 @app.delete("/api/files/{file_id}")
 async def delete_file(
         file_id: str,
-        user=Depends(get_current_user)
+        user: User = Depends(get_current_user),
+        services: ServiceContainer = Depends(get_services)
 ):
     """Удаление файла"""
-    if file_id not in file_storage:
-        raise HTTPException(status_code=404, detail="File not found")
-
-    file_data = file_storage[file_id]
-
-    # Проверяем права доступа
-    if file_data["user_id"] != user["id"]:
-        raise HTTPException(status_code=403, detail="Access denied")
-
-    # Удаляем файл с диска
     try:
-        file_path = Path(file_data["file_path"])
-        if file_path.exists():
-            file_path.unlink()
+        success = services.file_service.delete_file(file_id, user.user_id)
 
-        # Удаляем превью если есть
-        thumbnail_path = file_path.parent / f"thumb_{file_path.name}"
-        if thumbnail_path.exists():
-            thumbnail_path.unlink()
-
-        # Удаляем из storage
-        del file_storage[file_id]
-
-        logger.info(f"File deleted: {file_id} by user {user['id']}")
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="File not found or access denied"
+            )
 
         return {"status": "deleted", "file_id": file_id}
 
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error deleting file {file_id}: {e}")
-        raise HTTPException(status_code=500, detail="Failed to delete file")
-
-
-# ЧАТ с поддержкой файлов
-@app.post("/api/chat/send-with-files", response_model=MessageResponse)
-async def send_message_with_files(
-        message: Optional[str] = Form(None),
-        chat_id: Optional[str] = Form(None),
-        tool_type: Optional[str] = Form(None),
-        files: List[UploadFile] = File(...),
-        user=Depends(get_current_user)
-):
-    """Отправка сообщения с файлами"""
-    if len(files) > MAX_FILES_PER_MESSAGE:
+        logger.error(f"Error deleting file: {e}")
         raise HTTPException(
-            status_code=400,
-            detail=f"Максимальное количество файлов: {MAX_FILES_PER_MESSAGE}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete file"
         )
 
-    message_id = str(uuid.uuid4())
-    chat_id = chat_id or str(uuid.uuid4())
 
-    # Создаем чат если не существует
-    if chat_id not in chat_storage:
-        chat_storage[chat_id] = {
-            "chat_id": chat_id,
-            "user_id": user["id"],
-            "tool_type": tool_type,
-            "created_at": datetime.now().isoformat(),
-            "messages": []
-        }
-
-    # Загружаем файлы
-    uploaded_files = []
-    for file in files:
-        try:
-            file_info = await save_uploaded_file(file, user["id"])
-            uploaded_files.append(file_info)
-        except HTTPException as e:
-            logger.error(f"Failed to upload file {file.filename}: {e.detail}")
-            # Можно либо прервать загрузку, либо продолжить с остальными файлами
-            continue
-
-    # Сохраняем сообщение с файлами
-    message_data = {
-        "message_id": message_id,
-        "chat_id": chat_id,
-        "user_id": user["id"],
-        "message": message,
-        "tool_type": tool_type,
-        "type": "user",
-        "files": [f.dict() for f in uploaded_files],
-        "timestamp": datetime.now().isoformat()
-    }
-
-    chat_storage[chat_id]["messages"].append(message_data)
-
-    logger.info(f"Message with {len(uploaded_files)} files sent to chat {chat_id}")
-
-    return MessageResponse(
-        message_id=message_id,
-        chat_id=chat_id,
-        status="sent",
-        timestamp=message_data["timestamp"],
-        files=uploaded_files
-    )
-
-
-@app.post("/api/chat/send", response_model=MessageResponse)
-async def send_message(
-        request: SendMessageRequest,
-        user=Depends(get_current_user)
-):
-    """Отправка текстового сообщения в чат"""
-    message_id = str(uuid.uuid4())
-    chat_id = request.chat_id or str(uuid.uuid4())
-
-    if chat_id not in chat_storage:
-        chat_storage[chat_id] = {
-            "chat_id": chat_id,
-            "user_id": user["id"],
-            "tool_type": request.tool_type,
-            "created_at": datetime.now().isoformat(),
-            "messages": []
-        }
-
-    message_data = {
-        "message_id": message_id,
-        "chat_id": chat_id,
-        "user_id": user["id"],
-        "message": request.message,
-        "tool_type": request.tool_type,
-        "type": "user",
-        "files": [],
-        "timestamp": datetime.now().isoformat()
-    }
-
-    chat_storage[chat_id]["messages"].append(message_data)
-
-    logger.info(f"Message sent to chat {chat_id}: {request.message[:50]}...")
-
-    return MessageResponse(
-        message_id=message_id,
-        chat_id=chat_id,
-        status="sent",
-        timestamp=message_data["timestamp"],
-        files=[]
-    )
-
-
-@app.post("/api/chat/ai-response", response_model=AIResponse)
-async def get_ai_response(
-        request: AIResponseRequest,
-        user=Depends(get_current_user)
-):
-    """Получение ответа от ИИ с учетом файлов"""
-    try:
-        # Анализируем файлы если они есть
-        files_context = ""
-        if request.context.get("has_files"):
-            chat_id = request.context.get("chat_id")
-            if chat_id and chat_id in chat_storage:
-                last_message = chat_storage[chat_id]["messages"][-1]
-                if last_message.get("files"):
-                    file_descriptions = []
-                    for file_data in last_message["files"]:
-                        file_info = FileInfo(**file_data)
-                        file_descriptions.append(analyze_file_for_ai(file_info))
-                    files_context = "; ".join(file_descriptions)
-
-        # Добавляем контекст файлов
-        context_with_files = {
-            **request.context,
-            "files_context": files_context
-        }
-
-        ai_message = await get_gpt_response(request.message, context_with_files)
-
-        response_id = str(uuid.uuid4())
-        chat_id = request.context.get("chat_id")
-        tool_type = request.context.get("tool_type")
-
-        if chat_id and chat_id in chat_storage:
-            ai_response_data = {
-                "message_id": response_id,
-                "chat_id": chat_id,
-                "user_id": user["id"],
-                "message": ai_message,
-                "tool_type": tool_type,
-                "type": "assistant",
-                "files": [],
-                "timestamp": datetime.now().isoformat()
-            }
-            chat_storage[chat_id]["messages"].append(ai_response_data)
-
-        logger.info(f"AI response generated for user {user['id']}, tool_type: {tool_type}")
-
-        return AIResponse(
-            message=ai_message,
-            response_id=response_id,
-            timestamp=datetime.now().isoformat()
-        )
-
-    except Exception as e:
-        logger.error(f"AI response error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to generate AI response")
-
-
-@app.post("/api/chat/ai-response-stream")
-async def get_ai_response_stream(
-        request: AIResponseRequest,
-        user=Depends(get_current_user)
-):
-    """Получение потокового ответа от ИИ с учетом файлов"""
-
-    async def generate_response():
-        try:
-            logger.info(f"Stream request received: {request.message[:50]}...")
-
-            ai_service = get_ai_service()
-            if not ai_service:
-                logger.error("AI service is not available")
-                yield f"data: {json.dumps({'type': 'error', 'message': 'AI service unavailable'})}\n\n"
-                return
-
-            # Анализируем файлы если они есть
-            files_context = ""
-            if request.context.get("has_files"):
-                logger.info("Processing files context...")
-                chat_id = request.context.get("chat_id")
-                if chat_id and chat_id in chat_storage:
-                    last_message = chat_storage[chat_id]["messages"][-1]
-                    if last_message.get("files"):
-                        file_descriptions = []
-                        for file_data in last_message["files"]:
-                            file_info = FileInfo(**file_data)
-                            file_descriptions.append(analyze_file_for_ai(file_info))
-                        files_context = "; ".join(file_descriptions)
-                        logger.info(f"Files context prepared: {len(file_descriptions)} files")
-
-            # Добавляем контекст файлов
-            context_with_files = {
-                **request.context,
-                "files_context": files_context
-            }
-
-            # Получаем историю чата для контекста
-            chat_id = request.context.get("chat_id")
-            chat_history = []
-            if chat_id and chat_id in chat_storage:
-                chat_history = chat_storage[chat_id]["messages"]
-                logger.info(f"Chat history loaded: {len(chat_history)} messages")
-
-            # Получаем данные файлов из последнего сообщения
-            files_data = []
-            if chat_id and chat_id in chat_storage:
-                messages = chat_storage[chat_id]["messages"]
-                if messages:
-                    last_message = messages[-1]
-                    if last_message.get("files") and last_message.get("type") == "user":
-                        files_data = last_message["files"]
-                        logger.info(f"Files data loaded: {len(files_data)} files")
-
-            # Отправляем начальное сообщение
-            yield f"data: {json.dumps({'type': 'start'})}\n\n"
-            logger.info("Stream started, yielding chunks...")
-
-            chunk_count = 0
-            # Получаем потоковый ответ
-            async for chunk in ai_service.get_response_stream(
-                    request.message,
-                    context_with_files,
-                    chat_history,
-                    files_data
-            ):
-                chunk_count += 1
-                logger.debug(f"Yielding chunk {chunk_count}: {chunk[:30]}...")
-
-                # Отправляем каждый чанк
-                chunk_data = {
-                    'type': 'chunk',
-                    'content': chunk
-                }
-                yield f"data: {json.dumps(chunk_data)}\n\n"
-
-                # Небольшая задержка для предотвращения блокировки
-                await asyncio.sleep(0.01)
-
-            # Сигнал завершения
-            logger.info(f"Stream completed successfully. Total chunks: {chunk_count}")
-            yield f"data: {json.dumps({'type': 'end'})}\n\n"
-
-            # НE очищаем файлы здесь - пусть это делает обычный процесс
-            # Это может вызывать проблемы в streaming режиме
-
-        except Exception as e:
-            logger.error(f"AI streaming response error: {str(e)}", exc_info=True)
-            error_data = {
-                'type': 'error',
-                'message': f'Ошибка при генерации ответа: {str(e)}'
-            }
-            yield f"data: {json.dumps(error_data)}\n\n"
-
-    return StreamingResponse(
-        generate_response(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Headers": "Cache-Control"
-        }
-    )
-
-@app.get("/api/chat/history")
-async def get_chat_history(
-        chat_id: Optional[str] = None,
-        limit: int = 20,
-        user=Depends(get_current_user)
-):
-    """Получение истории чатов"""
-    user_id = user["id"]
-
-    if chat_id:
-        if chat_id in chat_storage and chat_storage[chat_id]["user_id"] == user_id:
-            chat = chat_storage[chat_id]
-            return chat["messages"][-limit:] if chat["messages"] else []
-        else:
-            return []
-    else:
-        user_chats = []
-        for chat_id, chat_data in chat_storage.items():
-            if chat_data["user_id"] == user_id:
-                last_message = chat_data["messages"][-1] if chat_data["messages"] else None
-
-                chat_info = {
-                    "chat_id": chat_id,
-                    "title": chat_data.get("title", f"Чат {chat_id[:8]}..."),
-                    "last_message": last_message["message"] if last_message else None,
-                    "last_message_time": last_message["timestamp"] if last_message else chat_data["created_at"],
-                    "message_count": len(chat_data["messages"]),
-                    "has_files": any(msg.get("files") for msg in chat_data["messages"])
-                }
-                user_chats.append(chat_info)
-
-        user_chats.sort(key=lambda x: x["last_message_time"], reverse=True)
-        return user_chats[:limit]
-
-
-@app.post("/api/chat/create")
-async def create_new_chat(
-        request: CreateChatRequest,
-        user=Depends(get_current_user),
-        db: Session = Depends(get_db)
-):
-    """Создание нового чата"""
-    chat_id = str(uuid.uuid4())
-
-    chat = Chat(
-        chat_id=chat_id,  # UUID чата
-        user_id=user["id"],
-        type=request.tool_type,
-        title=request.tool_title,
-        created_at=datetime.utcnow()
-    )
-
-    try:
-        db.add(chat)
-        db.commit()
-        db.refresh(chat)  # получаем обновленные данные (id, timestamps)
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Ошибка создания чата: {e}")
-
-    chat_storage[chat_id] = chat
-    logger.info(f"New chat created: {chat_id} by user {user['id']}")
-
-    return {
-        "chat_id": chat_id,
-        "title": request.title,
-        "status": "created"
-    }
-
-
-@app.post("/api/chat/create-tool")
-async def create_tool_chat(
-        request: CreateToolChatRequest,
-        user=Depends(get_current_user),
-        db: Session = Depends(get_db)
-):
-    chat_id = str(uuid.uuid4())
-
-    # Создаем ORM-модель чата
-    chat = Chat(
-        chat_id=chat_id,                # UUID чата
-        user_id=user["id"],
-        type=request.tool_type,
-        title=request.tool_title,
-        created_at=datetime.now()
-    )
-
-    try:
-        db.add(chat)
-        db.commit()
-        db.refresh(chat)  # получаем обновленные данные (id, timestamps)
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Ошибка создания чата: {e}")
-
-    # Если есть описание, создаем первое сообщение
-    if request.description:
-        initial_message = Message(
-            message_id=int(uuid.uuid4()),
-            chat_id=chat.chat_id,
-            user_id=user["id"],
-            content=request.description,
-            role="assistant",
-        )
-        try:
-            db.add(initial_message)
-            db.commit()
-        except Exception as e:
-            db.rollback()
-            raise HTTPException(status_code=500, detail=f"Ошибка сохранения сообщения: {e}")
-
-    return {
-        "chat_id": chat.chat_id,
-        "tool_type": chat.type,
-        "tool_title": chat.title,
-        "status": "created"
-    }
-
-
+# =====================================================
 # СИСТЕМНЫЕ ЭНДПОИНТЫ
+# =====================================================
+
 @app.get("/")
 async def health_check():
-    """Проверка состояния сервера"""
+    """Проверка работоспособности API"""
     ai_service = get_ai_service()
-    gpt_status = "available" if ai_service else "unavailable"
+    ai_status = "available" if ai_service else "unavailable"
 
     if ai_service:
         try:
-            gpt_healthy = await ai_service.health_check()
-            gpt_status = "healthy" if gpt_healthy else "error"
+            ai_healthy = await ai_service.health_check()
+            ai_status = "healthy" if ai_healthy else "error"
         except:
-            gpt_status = "error"
+            ai_status = "error"
 
     return {
         "status": "ok",
-        "message": "School Assistant API is running",
-        "version": "1.0.0",
+        "message": "ТоварищБот API is running",
+        "version": "2.0.0",
         "timestamp": datetime.now().isoformat(),
-        "gpt_status": gpt_status,
-        "stats": {
-            "users": len(user_storage),
-            "chats": len(chat_storage),
-            "files": len(file_storage)
-        }
+        "ai_status": ai_status,
+        "database": "sqlite_integrated"
     }
 
 
 @app.get("/api/system/info")
-async def get_system_info():
+async def get_system_info(db: Session = Depends(get_db)):
     """Информация о системе"""
-    total_messages = sum(len(chat["messages"]) for chat in chat_storage.values())
+    try:
+        # Подсчитываем статистику из БД
+        users_count = db.query(User).count()
+        chats_count = db.query(Chat).count()
+        messages_count = db.query(Message).count()
+        files_count = db.query(Attachment).count()
 
-    # Получаем статистику хранилища
-    cleanup_service = get_cleanup_service()
-    storage_stats = cleanup_service.get_storage_stats()
-
-    # Статистика по типам файлов
-    file_type_stats = {}
-    for file_data in file_storage.values():
-        file_type = file_data.get("file_type", "unknown")
-        file_type_stats[file_type] = file_type_stats.get(file_type, 0) + 1
-
-    return {
-        "api_name": "School Assistant API",
-        "version": "2.1.0",
-        "status": "running",
-        "features": [
-            "AI Chat with GPT-4o",
-            "Vision Analysis",
-            "Document Text Extraction",
-            "Auto File Cleanup",
-            "OCR Support (Optional)",
-            "Specialized Tools"
-        ],
-        "statistics": {
-            "total_users": len(user_storage),
-            "total_chats": len(chat_storage),
-            "total_messages": total_messages,
-            "active_files": len(file_storage),
-            "storage_used_mb": storage_stats["total_size_mb"],
-            "total_files_on_disk": storage_stats["total_files"],
-            "file_types": file_type_stats
-        },
-        "file_limits": {
-            "max_file_size_mb": MAX_FILE_SIZE // (1024 * 1024),
-            "max_files_per_message": MAX_FILES_PER_MESSAGE,
-            "file_retention_hours": 24,
-            "cleanup_interval_hours": 1,
-            "supported_image_types": list(SUPPORTED_IMAGE_TYPES),
-            "supported_document_types": list(SUPPORTED_DOCUMENT_TYPES),
-            "supported_audio_types": list(SUPPORTED_AUDIO_TYPES),
-        },
-        "ai_status": {
-            "service_available": get_ai_service() is not None,
-            "model": os.getenv("OPENAI_MODEL", "gpt-4o"),
-            "vision_enabled": True,
-            "document_processing": True
-        },
-        "endpoints": {
-            "auth": "/api/auth/telegram",
-            "profile": "/api/user/profile",
-            "file_upload": "/api/files/upload",
-            "file_analyze": "/api/files/{file_id}/analyze",
-            "chat_send": "/api/chat/send",
-            "chat_send_files": "/api/chat/send-with-files",
-            "chat_ai": "/api/chat/ai-response",
-            "chat_history": "/api/chat/history",
-            "system_cleanup": "/api/system/cleanup",
-            "storage_stats": "/api/system/storage-stats"
+        return {
+            "api_name": "ТоварищБот API",
+            "version": "2.0.0",
+            "status": "running",
+            "database": "SQLite",
+            "features": [
+                "AI Chat with GPT-4o",
+                "Vision Analysis",
+                "Document Processing",
+                "File Upload & Management",
+                "User Authentication",
+                "Subscription Management",
+                "Real-time Database"
+            ],
+            "statistics": {
+                "total_users": users_count,
+                "total_chats": chats_count,
+                "total_messages": messages_count,
+                "total_files": files_count
+            },
+            "file_limits": {
+                "max_file_size_mb": MAX_FILE_SIZE // (1024 * 1024),
+                "max_files_per_message": MAX_FILES_PER_MESSAGE,
+                "supported_image_types": list(SUPPORTED_IMAGE_TYPES),
+                "supported_document_types": list(SUPPORTED_DOCUMENT_TYPES),
+                "supported_audio_types": list(SUPPORTED_AUDIO_TYPES)
+            }
         }
-    }
+
+    except Exception as e:
+        logger.error(f"Error getting system info: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get system info"
+        )
 
 
-# DEBUG ЭНДПОИНТЫ
-@app.get("/api/debug/storage")
-async def debug_get_storage():
-    """DEBUG: Просмотр всего хранилища"""
-    cleanup_service = get_cleanup_service()
-    storage_stats = cleanup_service.get_storage_stats()
+@app.post("/api/system/cleanup")
+async def manual_cleanup(
+        hours_old: int = 24,
+        services: ServiceContainer = Depends(get_services)
+):
+    """Ручная очистка старых файлов"""
+    try:
+        deleted_count = services.file_service.cleanup_old_files(hours_old)
 
-    return {
-        "users": user_storage,
-        "chats": {k: {**v, "messages": len(v["messages"])} for k, v in chat_storage.items()},
-        "files": {k: {**v, "file_path": "***"} for k, v in file_storage.items()},
-        "storage_stats": storage_stats
-    }
-
-
-@app.delete("/api/debug/clear")
-async def debug_clear_storage():
-    """DEBUG: Очистка хранилища"""
-    cleanup_service = get_cleanup_service()
-
-    # Удаляем все файлы
-    for file_id, file_data in file_storage.items():
-        try:
-            file_path = Path(file_data["file_path"])
-            if file_path.exists():
-                file_path.unlink()
-
-            # Удаляем превью
-            thumbnail_path = file_path.parent / f"thumb_{file_path.name}"
-            if thumbnail_path.exists():
-                thumbnail_path.unlink()
-        except Exception as e:
-            logger.error(f"Error deleting file during debug cleanup: {e}")
-
-    # Принудительная очистка всех старых файлов
-    await cleanup_service.cleanup_old_files()
-
-    # Очищаем storage
-    chat_storage.clear()
-    user_storage.clear()
-    file_storage.clear()
-
-    # Пересоздаем тестового пользователя
-    user_storage[1] = DEFAULT_USER.copy()
-
-    # Получаем финальную статистику
-    final_stats = cleanup_service.get_storage_stats()
-
-    return {
-        "status": "cleared",
-        "message": "All data and files cleared",
-        "remaining_files": final_stats
-    }
-
-
-@app.get("/api/debug/files")
-async def debug_list_files():
-    """DEBUG: Список всех файлов"""
-    cleanup_service = get_cleanup_service()
-    storage_stats = cleanup_service.get_storage_stats()
-
-    files_info = []
-    for file_id, file_data in file_storage.items():
-        file_path = Path(file_data["file_path"])
-        files_info.append({
-            "file_id": file_id,
-            "original_name": file_data["original_name"],
-            "file_type": file_data["file_type"],
-            "file_size": file_data["file_size"],
-            "exists_on_disk": file_path.exists(),
-            "created_at": file_data["created_at"],
-            "age_hours": (datetime.now() - datetime.fromisoformat(file_data["created_at"])).total_seconds() / 3600
-        })
-
-    return {
-        "total_files_in_storage": len(files_info),
-        "total_files_on_disk": storage_stats["total_files"],
-        "storage_size_mb": storage_stats["total_size_mb"],
-        "files": files_info,
-        "cleanup_info": {
-            "max_age_hours": 24,
-            "cleanup_interval_hours": 1,
-            "next_cleanup": "Automatic every hour"
+        return {
+            "status": "completed",
+            "deleted_files": deleted_count,
+            "hours_old": hours_old,
+            "timestamp": datetime.now().isoformat()
         }
-    }
+
+    except Exception as e:
+        logger.error(f"Error during cleanup: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Cleanup failed"
+        )
 
 
-@app.post("/api/debug/emergency-cleanup")
-async def debug_emergency_cleanup(max_size_mb: float = 100):
-    """DEBUG: Экстренная очистка при превышении лимитов"""
-    cleanup_service = get_cleanup_service()
-
-    stats_before = cleanup_service.get_storage_stats()
-    await cleanup_service.emergency_cleanup(max_size_mb)
-    stats_after = cleanup_service.get_storage_stats()
-
-    return {
-        "status": "emergency_cleanup_completed",
-        "before": stats_before,
-        "after": stats_after,
-        "freed_mb": stats_before["total_size_mb"] - stats_after["total_size_mb"],
-        "timestamp": datetime.now().isoformat()
-    }
-
+# =====================================================
+# ЗАПУСК ПРИЛОЖЕНИЯ
+# =====================================================
 
 if __name__ == "__main__":
     import uvicorn
 
-    print("🚀 Starting School Assistant API with File Support...")
+    print("🚀 Starting ТоварищБот API with SQLite Database...")
     print("📍 Server: http://127.0.0.1:3213")
     print("📚 API Docs: http://127.0.0.1:3213/docs")
-    print("📁 File uploads will be stored in: uploads/")
-    print("🔗 Static files available at: http://127.0.0.1:3213/uploads/")
+    print("🗄️ Database: SQLite with full integration")
+    print("📁 File uploads: uploads/ directory")
 
     uvicorn.run(app, host="127.0.0.1", port=3213)

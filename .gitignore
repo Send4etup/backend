@@ -2,3 +2,5 @@
 .git
 .idea
 __pycache__
+uploads
+school_assistant.db
