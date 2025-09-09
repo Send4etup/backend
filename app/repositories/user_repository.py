@@ -1,4 +1,5 @@
 # app/repositories/user_repository.py
+from datetime import datetime
 from typing import Optional
 from sqlalchemy.orm import Session
 from app.models import User
@@ -37,3 +38,12 @@ class UserRepository(BaseRepository[User]):
         self.db.commit()
         self.db.refresh(user)
         return user
+
+    def update_time_activity(self, user_id: str, last_activity: datetime) -> Optional[User]:
+        user = self.get_by_id(user_id)
+        user.last_activity = last_activity
+
+        self.db.commit()
+        self.db.refresh(user)
+
+        return

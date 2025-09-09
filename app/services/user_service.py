@@ -3,6 +3,10 @@
 Сервис для работы с пользователями
 """
 from typing import Optional, Dict, Any
+from datetime import datetime, timezone, timedelta
+
+
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 import logging
 
@@ -30,17 +34,16 @@ class UserService:
         user = self.user_repo.get_by_telegram_id(telegram_id)
 
         if user:
+
             # Обновляем активность
-            self.user_repo.update(user.user_id, last_activity=func.now())
+            msk = timezone(timedelta(hours=3))
+            self.user_repo.update_time_activity(user.user_id, last_activity=datetime.now(msk))
             logger.info(f"User authenticated: {user.user_id}")
             return user
 
         # Создаем нового пользователя
         user = self.user_repo.create_user(
             telegram_id=telegram_id,
-            username=telegram_data.get('username'),
-            first_name=telegram_data.get('first_name'),
-            last_name=telegram_data.get('last_name')
         )
 
         logger.info(f"New user created: {user.user_id}")
@@ -55,9 +58,6 @@ class UserService:
         return {
             "user_id": user.user_id,
             "telegram_id": user.telegram_id,
-            "username": user.username,
-            "first_name": user.first_name,
-            "last_name": user.last_name,
             "subscription_type": user.subscription_type,
             "tokens_balance": user.tokens_balance,
             "tokens_used": user.tokens_used,

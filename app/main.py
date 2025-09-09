@@ -93,10 +93,6 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 # Pydantic модели для API
 class TelegramAuthRequest(BaseModel):
     telegram_id: Optional[int] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    username: Optional[str] = None
-    initData: Optional[str] = None
 
 
 class CreateChatRequest(BaseModel):
@@ -119,8 +115,6 @@ class AIResponseRequest(BaseModel):
 class UserProfileResponse(BaseModel):
     user_id: str
     telegram_id: int
-    username: Optional[str]
-    display_name: str
     subscription_type: str
     tokens_balance: int
     tokens_used: int
@@ -186,8 +180,6 @@ async def telegram_auth(
             "user": {
                 "user_id": user.user_id,
                 "telegram_id": user.telegram_id,
-                "username": user.username,
-                "display_name": user.display_name,
                 "subscription_type": user.subscription_type,
                 "tokens_balance": user.tokens_balance
             }

@@ -15,9 +15,8 @@ class User(Base):
 
     user_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     telegram_id = Column(Integer, unique=True, nullable=False)
-    username = Column(String, nullable=True)
-    first_name = Column(String, nullable=True)
-    last_name = Column(String, nullable=True)
+
+    about_user = Column(String, nullable=True)
 
     # Токены и подписка
     subscription_type = Column(String, default="free")  # free, basic, pro, mega

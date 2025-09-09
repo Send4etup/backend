@@ -21,7 +21,7 @@ def main():
             "app.main:app",
             host="127.0.0.1",
             port=3213,
-            reload=False
+            reload=True
         )
 
     except KeyboardInterrupt:
