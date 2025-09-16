@@ -6,7 +6,11 @@ from sqlalchemy import Column, String, Integer, Boolean, DateTime, Text, Foreign
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
+from datetime import datetime
+import pytz
 import uuid
+
+MoscowTZ = pytz.timezone("Europe/Moscow")
 
 
 class User(Base):
@@ -24,8 +28,9 @@ class User(Base):
     tokens_used = Column(Integer, default=0)
 
     # Временные метки
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    last_activity = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(MoscowTZ))
+    last_activity = Column(DateTime(timezone=True), default=lambda: datetime.now(MoscowTZ))
+
 
     is_active = Column(Boolean, default=True)
 
@@ -37,16 +42,16 @@ class User(Base):
     def __repr__(self):
         return f"<User(user_id={self.user_id}, telegram_id={self.telegram_id}, subscription={self.subscription_type})>"
 
-    @property
-    def full_name(self):
-        """Полное имя пользователя"""
-        parts = [self.first_name, self.last_name]
-        return " ".join(part for part in parts if part)
-
-    @property
-    def display_name(self):
-        """Отображаемое имя пользователя"""
-        return self.full_name or self.username or f"User {self.telegram_id}"
+    # @property
+    # def full_name(self):
+    #     """Полное имя пользователя"""
+    #     parts = [self.first_name, self.last_name]
+    #     return " ".join(part for part in parts if part)
+    #
+    # @property
+    # def display_name(self):
+    #     """Отображаемое имя пользователя"""
+    #     return self.full_name or self.username or f"User {self.telegram_id}"
 
     def has_tokens(self, required: int = 1) -> bool:
         """Проверка наличия токенов"""
@@ -97,8 +102,10 @@ class Chat(Base):
     tokens_used = Column(Integer, default=0)
 
     # Временные метки
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(MoscowTZ), onupdate=lambda: datetime.now(MoscowTZ))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(MoscowTZ), onupdate=lambda: datetime.now(MoscowTZ))
+
+    # Column(DateTime(timezone=True), default=lambda: datetime.now(MoscowTZ))
 
     # Relationships
     user = relationship("User", back_populates="chats")
@@ -150,7 +157,7 @@ class Message(Base):
     # ИСПРАВЛЕНО: переименовано metadata -> message_metadata
     message_metadata = Column(JSON, nullable=True)  # Дополнительная информация
 
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(MoscowTZ))
 
     # Relationships
     chat = relationship("Chat", back_populates="messages")

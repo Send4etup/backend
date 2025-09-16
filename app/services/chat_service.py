@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.repositories.chat_repository import ChatRepository
 from app.repositories.message_repository import MessageRepository
 from app.repositories.user_repository import UserRepository
+from app.repositories.attachment_repository import AttachmentRepository
 from app.models import Chat, Message
 import logging
 
@@ -15,6 +16,7 @@ class ChatService:
         self.chat_repo = ChatRepository(db)
         self.message_repo = MessageRepository(db)
         self.user_repo = UserRepository(db)
+        self.attachments_repo = AttachmentRepository(db)
 
     def create_chat(self, user_id: str, title: str, chat_type: str = "general") -> Chat:
         user = self.user_repo.get_by_id(user_id)
@@ -25,8 +27,7 @@ class ChatService:
         logger.info(f"Chat created: {chat.chat_id} for user {user_id}")
         return chat
 
-    def send_message(self, chat_id: str, user_id: str, content: str, 
-                    role: str = "user", tokens_count: int = 0) -> Message:
+    def send_message(self, chat_id: str, user_id: str, content: str, role: str = "user", tokens_count: int = 0) -> Message:
         chat = self.chat_repo.get_by_id(chat_id)
         if not chat:
             raise ValueError(f"Chat not found: {chat_id}")
@@ -50,15 +51,23 @@ class ChatService:
 
         result = []
         for chat in chats:
+
+            last_message = self.message_repo.get_last_message(chat.chat_id)
+
+            logger.info('Search last message: %s', last_message)
+
             result.append({
                 "chat_id": chat.chat_id,
                 "title": chat.title,
                 "type": chat.type,
                 "messages_count": chat.messages_count,
+                "last_message": last_message.content,
                 "tokens_used": chat.tokens_used,
                 "created_at": chat.created_at.isoformat(),
                 "updated_at": chat.updated_at.isoformat()
             })
+
+        logger.info(f"User {user_id} has {len(result)} chats")
 
         return result
 
@@ -69,3 +78,20 @@ class ChatService:
             {"role": msg.role, "content": msg.content}
             for msg in messages
         ]
+
+        # messages_data = services.chat_service.get_chat_history(chat_id, user.user_id, limit)
+
+    def get_chat_history(self, chat_id: str, user_id, limit: int = 10) -> List[Message]:
+
+        messages = self.message_repo.get_chat_messages(chat_id, user_id, limit)
+
+        for msg in messages:
+            attachments = self.attachments_repo.get_message_attachments(msg.message_id)
+
+            if attachments:
+                msg.attachments = attachments
+            logger.info(f"Message {msg.chat_id} has {len(msg.attachments)} attachments")
+
+        logger.info(f"User {user_id} has {len(messages)} messages")
+
+        return messages

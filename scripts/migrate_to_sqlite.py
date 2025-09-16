@@ -191,7 +191,7 @@ async def main():
             print("🎉 MIGRATION COMPLETED SUCCESSFULLY!")
             print("=" * 60)
             print(f"📍 Database file: {settings.DATABASE_URL}")
-            print(f"👤 Test user created: {test_user.display_name}")
+            # print(f"👤 Test user created: {test_user.display_name}")
             print(f"🔑 User ID: {test_user.user_id}")
             print(f"📱 Telegram ID: {test_user.telegram_id}")
             print("\n🚀 You can now start the FastAPI server:")

@@ -18,11 +18,12 @@ import logging
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 
+from app.auth import JWT_EXPIRATION_HOURS, JWTManager
 # Импорты наших модулей
 from app.database import get_db
 from app.dependencies import (
     get_services, get_current_user, require_tokens,
-    ServiceContainer
+    ServiceContainer, security
 )
 from app.models import User, Chat, Message, Attachment
 from app.services.ai_service import get_ai_service
@@ -101,8 +102,8 @@ class CreateChatRequest(BaseModel):
 
 
 class SendMessageRequest(BaseModel):
+    chat_id: str
     message: str
-    chat_id: Optional[str] = None
     tool_type: Optional[str] = None
 
 
@@ -127,13 +128,11 @@ class ChatResponse(BaseModel):
     chat_id: str
     title: str
     type: str
-    type_display: str
     messages_count: int
     tokens_used: int
     created_at: str
     updated_at: str
     last_message: Optional[str] = None
-    last_activity: str
 
 
 class MessageResponse(BaseModel):
@@ -144,6 +143,7 @@ class MessageResponse(BaseModel):
     tokens_count: int
     created_at: str
     attachments: List[Dict[str, Any]] = []
+    status: str
 
 
 class FileResponse(BaseModel):
@@ -162,36 +162,82 @@ class FileResponse(BaseModel):
 # =====================================================
 
 @app.post("/api/auth/telegram")
-async def telegram_auth(
+async def telegram_auth_secure(
         request: TelegramAuthRequest,
         services: ServiceContainer = Depends(get_services)
 ):
-    """Авторизация через Telegram"""
+    """Безопасная авторизация через Telegram с JWT"""
     try:
+        # Создаем или находим пользователя
         user = await services.user_service.authenticate_or_create_user(
             request.dict(exclude_none=True)
         )
 
-        # TODO: Генерация JWT токена
-        mock_token = f"mock_token_{user.telegram_id}_{int(datetime.now().timestamp())}"
+        # Создаем безопасный JWT токен
+        token = JWTManager.create_access_token({
+            "user_id": user.user_id,
+            "telegram_id": user.telegram_id,
+            "subscription_type": user.subscription_type
+        })
+
+        logger.info(f"✅ User authenticated successfully: {user.user_id}")
 
         return {
-            "token": mock_token,
+            "access_token": token,
+            "token_type": "bearer",
+            "expires_in": JWT_EXPIRATION_HOURS * 3600,  # в секундах
             "user": {
                 "user_id": user.user_id,
                 "telegram_id": user.telegram_id,
                 "subscription_type": user.subscription_type,
-                "tokens_balance": user.tokens_balance
+                "tokens_balance": user.tokens_balance,
             }
         }
 
     except Exception as e:
-        logger.error(f"Authentication error: {e}")
+        logger.error(f"❌ Authentication error: {e}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
 
+
+@app.post("/api/auth/refresh")
+async def refresh_token(
+        token: str = Depends(security),
+        services: ServiceContainer = Depends(get_services)
+):
+    """Обновление JWT токена"""
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token required"
+        )
+
+    try:
+        new_token = JWTManager.refresh_token(token.credentials)
+
+        return {
+            "access_token": new_token,
+            "token_type": "bearer",
+            "expires_in": JWT_EXPIRATION_HOURS * 3600
+        }
+
+    except Exception as e:
+        logger.error(f"Token refresh failed: {e}")
+        raise
+
+@app.post("/api/auth/verify")
+async def verify_token_endpoint(
+        user = Depends(get_current_user)
+):
+    """Проверка валидности токена"""
+    return {
+        "valid": True,
+        "user_id": user.user_id,
+        "telegram_id": user.telegram_id,
+        "subscription_type": user.subscription_type
+    }
 
 # =====================================================
 # ПОЛЬЗОВАТЕЛИ
@@ -213,7 +259,7 @@ async def get_user_profile(
 
     return UserProfileResponse(
         **profile,
-        display_name=user.display_name,
+        # display_name=user.display_name,
         subscription_limits=user.get_subscription_limits()
     )
 
@@ -266,21 +312,38 @@ async def get_chat_history(
     try:
         chats_data = services.chat_service.get_user_chats(user.user_id, limit)
 
-        return [
-            ChatResponse(
+        logger.info('Запрошена история чатов пользователя: ' + user.user_id)
+
+        result = []
+
+        for chat in chats_data:
+            chat_response = ChatResponse(
                 chat_id=chat["chat_id"],
                 title=chat["title"],
                 type=chat["type"],
-                type_display=chat.get("type_display", chat["type"]),
                 messages_count=chat["messages_count"],
                 tokens_used=chat["tokens_used"],
                 created_at=chat["created_at"],
                 updated_at=chat["updated_at"],
-                last_message=chat.get("last_message"),
-                last_activity=chat.get("last_message_time", chat["created_at"])
+                last_message=chat.get("last_message")
             )
-            for chat in chats_data
-        ]
+
+            # chat_response = {
+            #     "chat_id": chat["chat_id"],
+            #     "title": chat["title"],
+            #     "type": chat["type"],
+            #     "messages_count": chat["messages_count"],
+            #     "tokens_used": chat["tokens_used"],
+            #     "created_at": chat["created_at"],
+            #     "updated_at": chat["updated_at"],
+            #     "last_message": chat.get("last_message"),
+            # }
+
+            result.append(chat_response)
+
+        logger.info('Отправлено ' + str(len(result)) + " Чатов")
+
+        return result
 
     except Exception as e:
         logger.error(f"Error getting chat history: {e}")
@@ -301,15 +364,18 @@ async def get_chat_messages(
     try:
         messages_data = services.chat_service.get_chat_history(chat_id, user.user_id, limit)
 
+        logger.info('send result')
+
         return [
             MessageResponse(
-                message_id=msg["message_id"],
+                message_id=msg.message_id,
                 chat_id=chat_id,
-                role=msg["role"],
-                content=msg["content"],
-                tokens_count=msg["tokens_count"],
-                created_at=msg["created_at"],
-                attachments=[]  # TODO: добавить вложения
+                role=msg.role,
+                content=msg.content,
+                tokens_count=msg.tokens_count,
+                created_at=msg.created_at.isoformat(),
+                attachments=[],  # TODO: добавить вложения
+                status='sent'
             )
             for msg in messages_data
         ]
@@ -339,24 +405,16 @@ async def send_message(
 ):
     """Отправка текстового сообщения"""
     try:
-        # Создаем чат если не существует
-        if not request.chat_id:
-            chat = services.chat_service.create_chat(
-                user.user_id,
-                f"Чат {datetime.now().strftime('%d.%m %H:%M')}"
-            )
-            chat_id = chat.chat_id
-        else:
-            chat_id = request.chat_id
 
-        # Отправляем сообщение пользователя
+
         user_message = services.chat_service.send_message(
-            chat_id, user.user_id, request.message, "user"
+            request.chat_id, user.user_id, request.message, "user"
         )
+
+        logger.info('get message')
 
         return {
             "message_id": user_message.message_id,
-            "chat_id": chat_id,
             "status": "sent",
             "timestamp": user_message.created_at.isoformat()
         }

@@ -11,6 +11,7 @@ class ChatRepository(BaseRepository[Chat]):
     def get_user_chats(self, user_id: str, limit: int = 10) -> List[Chat]:
         return (self.db.query(Chat)
                 .filter(Chat.user_id == user_id)
+                .filter(Chat.messages_count > 0)
                 .order_by(Chat.updated_at.desc())
                 .limit(limit)
                 .all())

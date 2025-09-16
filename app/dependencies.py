@@ -4,6 +4,8 @@ from typing import Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer
 from sqlalchemy.orm import Session
+
+from app.auth import JWTManager
 from app.database import get_db
 import logging
 
@@ -32,32 +34,84 @@ async def get_current_user(
         token: Optional[str] = Depends(security)
 ):
     """
-    🚀 ВРЕМЕННАЯ ПРОСТАЯ АВТОРИЗАЦИЯ ДЛЯ РАЗРАБОТКИ
-    Всегда возвращает одного и того же тестового пользователя
+    Безопасное получение текущего пользователя через JWT
     """
     from app.models import User
 
-    logger.info("🔐 Using SIMPLE auth mode")
+    logger.info("🔐 Authenticating user with JWT token")
+    logger.info(token)
 
-    # Создаем простой объект пользователя
-    class SimpleUser:
-        def __init__(self):
-            self.user_id = "dev_user_123"
-            self.telegram_id = 123456789
-            self.username = "dev_user"
-            self.display_name = "Development User"
-            self.subscription_type = "free"
-            self.tokens_balance = 1000
+    # Проверяем наличие токена
+    if not token or not token.credentials:
+        logger.error("❌ No token provided")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization token required",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
 
-        def get_subscription_limits(self):
-            return {
-                "max_requests_per_day": 1000,
-                "max_tokens_per_request": 4000,
-                "max_file_size_mb": 50
-            }
+    try:
+        # Декодируем и проверяем JWT токен
+        payload = JWTManager.verify_token(token.credentials)
 
-    logger.info("✅ Simple user created successfully")
-    return SimpleUser()
+        telegram_id = payload.get("telegram_id")
+        user_id = payload.get("user_id")
+
+        if not telegram_id or not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token payload"
+            )
+
+        logger.info(f"🔍 Looking for user: {user_id} (telegram_id: {telegram_id})")
+
+        # Ищем пользователя в БД
+        user = services.user_service.user_repo.get_by_id(user_id)
+
+        if not user:
+            logger.error(f"❌ User not found in database: {user_id}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found"
+            )
+
+        # Дополнительная проверка telegram_id
+        if user.telegram_id != telegram_id:
+            logger.error(f"❌ Telegram ID mismatch for user: {user_id}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token data mismatch"
+            )
+
+        # Проверяем активность пользователя
+        if not user.is_active:
+            logger.warning(f"⚠️ Inactive user attempted access: {user_id}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User account is inactive"
+            )
+
+        logger.info(f"✅ User authenticated successfully: {user.user_id}")
+
+        # Обновляем время последней активности
+        from datetime import datetime, timezone, timedelta
+        msk = timezone(timedelta(hours=3))
+        services.user_service.user_repo.update_time_activity(
+            user.user_id,
+            last_activity=datetime.now(msk)
+        )
+
+        return user
+
+    except HTTPException:
+        # Пропускаем HTTPException дальше
+        raise
+    except Exception as e:
+        logger.error(f"❌ Authentication error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication failed"
+        )
 
 
 def require_tokens(min_tokens: int = 1):
