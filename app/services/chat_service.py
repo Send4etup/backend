@@ -1,12 +1,14 @@
 # app/services/chat_service.py
+from datetime import datetime
 from typing import List, Dict, Any
 from sqlalchemy.orm import Session
 from app.repositories.chat_repository import ChatRepository
 from app.repositories.message_repository import MessageRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.attachment_repository import AttachmentRepository
-from app.models import Chat, Message
+from app.models import Chat, Message, Attachment
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +48,7 @@ class ChatService:
 
         return message
 
-    def get_user_chats(self, user_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+    def get_user_chats(self, user_id: str, limit: int = 3) -> List[Dict[str, Any]]:
         chats = self.chat_repo.get_user_chats(user_id, limit)
 
         result = []
@@ -68,6 +70,28 @@ class ChatService:
             })
 
         logger.info(f"User {user_id} has {len(result)} chats")
+
+        return result
+
+    def get_user_chats_with_pagination(self, user_id: str, limit: int = 10, offset: int = 0) -> List[Dict[str, Any]]:
+        """Получение чатов пользователя с пагинацией"""
+        chats = self.chat_repo.get_user_chats_paginated(user_id, limit, offset)
+
+        result = []
+        for chat in chats:
+            # Получаем последнее сообщение
+            last_message = self.message_repo.get_last_message(chat.chat_id)
+
+            result.append({
+                "chat_id": chat.chat_id,
+                "title": chat.title,
+                "type": chat.type,
+                "messages_count": chat.messages_count,
+                "tokens_used": chat.tokens_used,
+                "created_at": chat.created_at.isoformat(),
+                "updated_at": chat.updated_at.isoformat(),
+                "last_message": last_message.content if last_message else None
+            })
 
         return result
 
@@ -95,3 +119,84 @@ class ChatService:
         logger.info(f"User {user_id} has {len(messages)} messages")
 
         return messages
+
+
+    def get_chat(self, chat_id: str, user_id: str):
+        """Получение чата по ID с проверкой владельца"""
+        chat = self.chat_repo.get_by_id(chat_id)
+
+        if not chat or chat.user_id != user_id:
+            return None
+
+        return chat
+
+
+    def update_chat_title(self, chat_id: str, user_id: str, new_title: str) -> bool:
+        """Обновление названия чата"""
+        try:
+            chat = self.chat_repo.get_by_id(chat_id)
+
+            if not chat or chat.user_id != user_id:
+                return False
+
+            chat.title = new_title
+            # chat.updated_at = datetime.now()
+            self.db.commit()
+
+            return True
+
+        except Exception as e:
+            logger.error(f"Error updating chat title: {e}")
+            self.db.rollback()
+            return False
+
+
+    def delete_chat(self, chat_id: str, user_id: str) -> bool:
+        """Удаление чата и всех связанных данных"""
+        try:
+            chat = self.chat_repo.get_by_id(chat_id)
+
+            if not chat or chat.user_id != user_id:
+                return False
+
+            # Удаляем все сообщения чата
+            self.message_repo.delete_by_chat_id(chat_id)
+
+            # Удаляем все вложения чата
+            attachments = self.db.query(Attachment).filter(
+                Attachment.message_id.in_(
+                    self.db.query(Message.message_id).filter(Message.chat_id == chat_id)
+                )
+            ).all()
+
+            # Удаляем файлы с диска
+            for attachment in attachments:
+                try:
+                    if os.path.exists(attachment.file_path):
+                        os.remove(attachment.file_path)
+                except Exception as e:
+                    logger.warning(f"Failed to delete file {attachment.file_path}: {e}")
+
+            # Удаляем записи о вложениях
+            for attachment in attachments:
+                self.db.delete(attachment)
+
+            # Удаляем сам чат
+            self.db.delete(chat)
+            self.db.commit()
+
+            logger.info(f"Chat {chat_id} deleted successfully with all related data")
+            return True
+
+        except Exception as e:
+            logger.error(f"Error deleting chat: {e}")
+            self.db.rollback()
+            return False
+
+    def cleanup_empty_chats(self, hours_old: int = 24) -> int:
+        """Очистка пустых чатов старше указанного времени"""
+        try:
+            return self.chat_repo.cleanup_empty_chats(hours_old)
+        except Exception as e:
+            logger.error(f"Error during empty chats cleanup: {e}")
+            return 0

@@ -93,6 +93,14 @@ async def get_current_user(
 
         logger.info(f"✅ User authenticated successfully: {user.user_id}")
 
+        try:
+            deleted_count = services.chat_service.cleanup_empty_chats(hours_old=24)
+            if deleted_count > 0:
+                logger.info(f"🧹 Auto-cleaned {deleted_count} empty chats for user {user_id}")
+        except Exception as cleanup_error:
+            # Не прерываем аутентификацию из-за ошибки очистки
+            logger.warning(f"⚠️ Auto-cleanup failed for user {user_id}: {cleanup_error}")
+
         # Обновляем время последней активности
         from datetime import datetime, timezone, timedelta
         msk = timezone(timedelta(hours=3))
@@ -128,48 +136,3 @@ def require_tokens(min_tokens: int = 1):
         return user
 
     return check_tokens
-
-
-# ====================================================================
-# ОРИГИНАЛЬНЫЙ КОД (ЗАКОММЕНТИРОВАН ДЛЯ ВОССТАНОВЛЕНИЯ)
-# ====================================================================
-
-"""
-# ОРИГИНАЛЬНАЯ ВЕРСИЯ get_current_user:
-
-async def get_current_user_ORIGINAL(
-        services: ServiceContainer = Depends(get_services),
-        token: Optional[str] = Depends(security)
-):
-    from app.models import User
-    try:
-        user = services.user_service.user_repo.get_by_telegram_id(123456789)
-        if not user:
-            user = await services.user_service.authenticate_or_create_user({
-                'telegram_id': 123456789,
-                'username': 'test_user',
-                'first_name': 'Test',
-                'last_name': 'User'
-            })
-        return user
-    except Exception as e:
-        logger.error(f"Error getting current user: {e}")
-        raise HTTPException(status_code=401, detail="Authentication failed")
-
-# ОРИГИНАЛЬНАЯ ВЕРСИЯ require_tokens:
-
-def require_tokens_ORIGINAL(min_tokens: int = 1):
-    def check_tokens(
-            user = Depends(get_current_user),
-            services: ServiceContainer = Depends(get_services)
-    ):
-        try:
-            if hasattr(services.user_service.user_repo, 'check_tokens_available'):
-                if not services.user_service.user_repo.check_tokens_available(user.user_id, min_tokens):
-                    raise HTTPException(status_code=402, detail=f"Insufficient tokens")
-        except:
-            pass  # Пропускаем если метод не реализован
-        return user
-
-    return check_tokens
-"""

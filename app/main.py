@@ -39,6 +39,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
+
 logger = logging.getLogger(__name__)
 
 # Создаем FastAPI приложение
@@ -304,15 +305,23 @@ async def create_chat(
 
 @app.get("/api/chat/history", response_model=List[ChatResponse])
 async def get_chat_history(
-        limit: int = 10,
+        limit: int = 3,
+        offset: int = 0,
         user: User = Depends(get_current_user),
         services: ServiceContainer = Depends(get_services)
 ):
     """Получение истории чатов пользователя"""
     try:
-        chats_data = services.chat_service.get_user_chats(user.user_id, limit)
 
-        logger.info('Запрошена история чатов пользователя: ' + user.user_id)
+        if offset == 0:
+            chats_data = services.chat_service.get_user_chats(user.user_id, limit)
+        else:
+            logger.info('!!!!!!!!!! add pagination')
+            chats_data = services.chat_service.get_user_chats_with_pagination(
+                user.user_id, limit, offset
+            )
+
+        logger.info(f'Requested chat history for user: {user.user_id}, limit: {limit}, offset: {offset}')
 
         result = []
 
@@ -328,21 +337,9 @@ async def get_chat_history(
                 last_message=chat.get("last_message")
             )
 
-            # chat_response = {
-            #     "chat_id": chat["chat_id"],
-            #     "title": chat["title"],
-            #     "type": chat["type"],
-            #     "messages_count": chat["messages_count"],
-            #     "tokens_used": chat["tokens_used"],
-            #     "created_at": chat["created_at"],
-            #     "updated_at": chat["updated_at"],
-            #     "last_message": chat.get("last_message"),
-            # }
-
             result.append(chat_response)
 
-        logger.info('Отправлено ' + str(len(result)) + " Чатов")
-
+        logger.info(f'Returned {len(result)} chats')
         return result
 
     except Exception as e:
@@ -390,6 +387,151 @@ async def get_chat_messages(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get chat messages"
+        )
+
+
+@app.put("/api/chat/{chat_id}/title")
+async def update_chat_title(
+        chat_id: str,
+        request: dict,  # Ожидаем {"title": "Новое название"}
+        user: User = Depends(get_current_user),
+        services: ServiceContainer = Depends(get_services)
+):
+    """
+    Обновление названия чата
+    """
+    try:
+        new_title = request.get("title", "").strip()
+
+        if not new_title:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Title cannot be empty"
+            )
+
+        if len(new_title) > 100:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Title too long (max 100 characters)"
+            )
+
+        # Проверяем что чат существует и принадлежит пользователю
+        chat = services.chat_service.get_chat(chat_id, user.user_id)
+        if not chat:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Chat not found or access denied"
+            )
+
+        # Обновляем название
+        success = services.chat_service.update_chat_title(chat_id, user.user_id, new_title)
+
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update chat title"
+            )
+
+        logger.info(f"Chat title updated: {chat_id} -> '{new_title}' by user {user.user_id}")
+
+        return {
+            "status": "success",
+            "message": "Chat title updated successfully",
+            "chat_id": chat_id,
+            "new_title": new_title
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating chat title: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update chat title"
+        )
+
+
+@app.delete("/api/chat/{chat_id}")
+async def delete_chat(
+        chat_id: str,
+        user: User = Depends(get_current_user),
+        services: ServiceContainer = Depends(get_services)
+):
+    """
+    Удаление чата и всех связанных данных
+    """
+    try:
+        # Проверяем что чат существует и принадлежит пользователю
+        chat = services.chat_service.get_chat(chat_id, user.user_id)
+        if not chat:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Chat not found or access denied"
+            )
+
+        # Удаляем чат
+        success = services.chat_service.delete_chat(chat_id, user.user_id)
+
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to delete chat"
+            )
+
+        logger.info(f"Chat deleted: {chat_id} by user {user.user_id}")
+
+        return {
+            "status": "success",
+            "message": "Chat deleted successfully",
+            "chat_id": chat_id
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting chat: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete chat"
+        )
+
+
+@app.get("/api/chat/{chat_id}")
+async def get_chat_info(
+        chat_id: str,
+        user: User = Depends(get_current_user),
+        services: ServiceContainer = Depends(get_services)
+):
+    """
+    Получение информации о конкретном чате
+    """
+    try:
+        chat = services.chat_service.get_chat(chat_id, user.user_id)
+
+        if not chat:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Chat not found or access denied"
+            )
+
+        # Получаем статистику чата
+        return {
+            "chat_id": chat.chat_id,
+            "title": chat.title,
+            "type": chat.type,
+            "messages_count": chat.messages_count,
+            "tokens_used": chat.tokens_used,
+            "created_at": chat.created_at.isoformat(),
+            "updated_at": chat.updated_at.isoformat()
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting chat info: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get chat info"
         )
 
 
