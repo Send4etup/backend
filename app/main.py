@@ -749,7 +749,7 @@ async def send_message(
 
 @app.post("/api/chat/send-with-files")
 async def send_message_with_files(
-        message: str = Form(...),
+        message: str = Form(""),
         chat_id: Optional[str] = Form(None),
         tool_type: Optional[str] = Form(None),
         files: List[UploadFile] = File(default=[]),
@@ -762,6 +762,12 @@ async def send_message_with_files(
     """
     try:
         logger.info(f"Sending message with {len(files)} files from user {user.user_id}")
+
+        if not message.strip() and len(files) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Необходимо отправить текст или прикрепить файлы"
+            )
 
         # 1. Создаем или используем существующий чат
         if not chat_id:
@@ -814,31 +820,28 @@ async def send_message_with_files(
                 logger.error(f"Error uploading file {file.filename}: {e}")
                 file_errors.append(f"{file.filename}: {str(e)}")
 
-        # 3. Отправляем сообщение пользователя
+        # 3. Отправляем сообщение пользователя ТОЛЬКО если есть текст
         user_message = None
-        if message.strip():
+        if message.strip():  # 🔧 ПРОВЕРЯЕМ что есть текст
             user_message = services.chat_service.send_message(
                 chat_id, user.user_id, message, "user"
             )
-            logger.info(f"Sent user message: {user_message.message_id}")
-
-            # Связываем файлы с сообщением
-            for file_data in uploaded_files:
-                try:
-                    # Обновляем attachment в БД
-                    attachment = services.file_service.attachment_repo.get_by_id(file_data["file_id"])
-                    if attachment:
-                        attachment.message_id = user_message.message_id
-                        services.file_service.attachment_repo.db.commit()
-                except Exception as e:
-                    logger.error(f"Error linking file to message: {e}")
+            logger.info(f"✅ Sent user message: {user_message.message_id}")
+        elif len(uploaded_files) > 0:
+            # Если только файлы - создаем сообщение с описанием файлов
+            file_names = [f['file_name'] for f in uploaded_files]
+            auto_message = f"📎 Прикреплены файлы: {', '.join(file_names)}"
+            user_message = services.chat_service.send_message(
+                chat_id, user.user_id, auto_message, "user"
+            )
+            logger.info(f"✅ Sent auto-generated message for files: {user_message.message_id}")
 
         # 4. Списываем токены за сообщение
         tokens_used = 1  # Базовая стоимость сообщения
         tokens_used += len(uploaded_files) * 2  # +2 токена за каждый файл
 
         if user.tokens_balance >= tokens_used:
-            services.user_service.user_repo.deduct_tokens(user.user_id, tokens_used)
+            services.user_service.use_tokens(user.user_id, tokens_used)
             logger.info(f"Deducted {tokens_used} tokens from user {user.user_id}")
         else:
             logger.warning(f"User {user.user_id} has insufficient tokens: {user.tokens_balance} < {tokens_used}")
