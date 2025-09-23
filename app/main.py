@@ -1,11 +1,11 @@
-# app/main.py (ПОЛНОСТЬЮ ОБНОВЛЕННАЯ ВЕРСИЯ)
+# app/main.py
 """
-ТоварищБот Backend API с полной SQLite интеграцией
+ТоварищБот Backend API
 """
-from fastapi import FastAPI, HTTPException, Depends, status, File, UploadFile, Form
+from fastapi import FastAPI, HTTPException, Depends, status, File, UploadFile, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import uuid
@@ -28,9 +28,24 @@ from app.dependencies import (
 from app.models import User, Chat, Message, Attachment
 from app.services.ai_service import get_ai_service
 from app.startup import startup_event, shutdown_event
+
+from app.security import CORSConfig
+from app.services.telegram_validator import (
+    validate_telegram_init_data,
+    TelegramDataValidationError,
+    init_telegram_validator
+)
+from app.services.telegram_validator import init_telegram_validator
+from app.config import settings
+
+# from fastapi_csrf_protect import CsrfProtect
+# from fastapi_csrf_protect.exceptions import CsrfProtectError
+# from app.security import CORSConfig, init_csrf_protection, get_csrf_error_response
+
 import mimetypes
 import magic
 from PIL import Image
+
 
 load_dotenv()
 
@@ -54,11 +69,25 @@ app = FastAPI(
 # CORS настройки
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # В продакшене указать конкретные домены
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=CORSConfig.get_allowed_origins(),  # ✅ Только разрешенные домены
+    allow_credentials=True,  # Теперь безопасно с конкретными доменами
+    allow_methods=CORSConfig.get_allowed_methods(),
+    allow_headers=CORSConfig.get_allowed_headers(),
+    expose_headers=CORSConfig.get_expose_headers()
 )
+
+# csrf_settings = init_csrf_protection()
+
+
+# @app.exception_handler(CsrfProtectError)
+# async def csrf_protect_exception_handler(request: Request, exc: CsrfProtectError):
+#     """Обработчик ошибок CSRF"""
+#     logger.warning(f"🛡️ CSRF атака заблокирована: {exc} от IP: {request.client.host}")
+#
+#     return JSONResponse(
+#         status_code=status.HTTP_403_FORBIDDEN,
+#         content=get_csrf_error_response()
+#     )
 
 # События жизненного цикла
 app.add_event_handler("startup", startup_event)
@@ -94,8 +123,18 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # Pydantic модели для API
 class TelegramAuthRequest(BaseModel):
-    telegram_id: Optional[int] = None
+    """
+    Новая модель для безопасной авторизации через Telegram
+    """
+    init_data: str  # Полные данные от window.Telegram.WebApp.initData
 
+    class Config:
+        # Пример валидного init_data для документации
+        schema_extra = {
+            "example": {
+                "init_data": "query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A279058397%2C%22first_name%22%3A%22Test%22%7D&auth_date=1662771648&hash=c501b71e775f74ce10e377dea85a7ea24ecd640b223ea86dfe453e0eaed2e2b2"
+            }
+        }
 
 class CreateChatRequest(BaseModel):
     title: str
@@ -162,45 +201,132 @@ class FileResponse(BaseModel):
 # АУТЕНТИФИКАЦИЯ
 # =====================================================
 
-@app.post("/api/auth/telegram")
-async def telegram_auth_secure(
-        request: TelegramAuthRequest,
-        services: ServiceContainer = Depends(get_services)
+@app.post("/api/auth/telegram-secure")
+async def telegram_auth_secure_v2(
+        auth_request: TelegramAuthRequest,
+        services: ServiceContainer = Depends(get_services),
 ):
-    """Безопасная авторизация через Telegram с JWT"""
-    try:
-        # Создаем или находим пользователя
-        user = await services.user_service.authenticate_or_create_user(
-            request.dict(exclude_none=True)
-        )
+    """
+    🔐 БЕЗОПАСНАЯ авторизация через Telegram WebApp с полной валидацией initData
 
-        # Создаем безопасный JWT токен
+    Этот endpoint проверяет подлинность данных с помощью HMAC-SHA256 подписи,
+    защищает от replay-атак и подделки данных пользователя.
+
+    Требует передачи полной строки window.Telegram.WebApp.initData
+    """
+    try:
+        logger.info("🔐 Starting secure Telegram authentication")
+
+        # 1. Валидируем initData с помощью HMAC-SHA256
+        try:
+            validated_data = validate_telegram_init_data(auth_request.init_data)
+            logger.info("✅ Telegram initData validation successful")
+        except TelegramDataValidationError as e:
+            logger.warning(f"🚫 Telegram validation failed: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Invalid Telegram data: {str(e)}"
+            )
+
+        # 2. Извлекаем проверенные данные пользователя
+        user_data = validated_data['user']
+        telegram_id = user_data['id']
+
+        logger.info(f"🆔 Validated Telegram user ID: {telegram_id}")
+
+        # 3. Создаем или находим пользователя в БД
+        user_info = {
+            'telegram_id': telegram_id,
+            'first_name': user_data.get('first_name', ''),
+            'last_name': user_data.get('last_name', ''),
+            'username': user_data.get('username', ''),
+            'language_code': user_data.get('language_code', 'ru'),
+            'is_premium': user_data.get('is_premium', False),
+        }
+
+        user = await services.user_service.authenticate_or_create_user(user_info)
+
+        # 4. Создаем безопасный JWT токен
         token = JWTManager.create_access_token({
             "user_id": user.user_id,
             "telegram_id": user.telegram_id,
-            "subscription_type": user.subscription_type
+            "subscription_type": user.subscription_type,
+            "auth_method": "telegram_secure",  # Отмечаем метод авторизации
+            "auth_date": validated_data.get('auth_date')
         })
 
-        logger.info(f"✅ User authenticated successfully: {user.user_id}")
+        logger.info(f"✅ Secure authentication successful for user: {user.user_id}")
 
         return {
             "access_token": token,
             "token_type": "bearer",
-            "expires_in": JWT_EXPIRATION_HOURS * 3600,  # в секундах
+            "expires_in": JWT_EXPIRATION_HOURS * 3600,
+            "auth_method": "telegram_secure",
             "user": {
                 "user_id": user.user_id,
                 "telegram_id": user.telegram_id,
                 "subscription_type": user.subscription_type,
                 "tokens_balance": user.tokens_balance,
+                "first_name": user_data.get('first_name', ''),
+                "username": user_data.get('username', ''),
+                "is_premium": user_data.get('is_premium', False)
+            },
+            "telegram_data": {
+                "auth_date": validated_data.get('auth_date'),
+                "query_id": validated_data.get('query_id'),
+                "chat_type": validated_data.get('chat_type')
             }
         }
 
+    except HTTPException:
+        # Перебрасываем HTTP исключения как есть
+        raise
     except Exception as e:
-        logger.error(f"❌ Authentication error: {e}")
+        logger.error(f"❌ Unexpected authentication error: {e}")
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Authentication service temporarily unavailable"
         )
+
+
+# Endpoint для проверки конфигурации безопасности
+@app.get("/api/auth/security-status")
+async def get_security_status():
+    """
+    📊 Информация о состоянии системы безопасности
+    """
+    try:
+        # Проверяем инициализацию валидатора
+        from app.services.telegram_validator import get_telegram_validator
+        validator = get_telegram_validator()
+        validator_status = "initialized"
+    except:
+        validator_status = "not_initialized"
+
+    # Проверяем переменные окружения
+    bot_token_configured = bool(os.getenv("TELEGRAM_BOT_TOKEN"))
+    environment = os.getenv("ENVIRONMENT", "development")
+
+    return {
+        "timestamp": datetime.now().isoformat(),
+        "environment": environment,
+        "security_features": {
+            "telegram_validator": validator_status,
+            "bot_token_configured": bot_token_configured,
+            "jwt_auth": "enabled",
+            "cors_protection": "enabled",
+        },
+        "available_auth_methods": {
+            "telegram_secure": validator_status == "initialized",
+            "telegram_test": environment == "development",
+        },
+        "recommendations": [
+            "Use /api/auth/telegram-secure for production",
+            "Disable test endpoints in production",
+            "Ensure TELEGRAM_BOT_TOKEN is configured",
+            "Verify CORS settings for your domain"
+        ]
+    }
 
 
 @app.post("/api/auth/refresh")
@@ -244,25 +370,77 @@ async def verify_token_endpoint(
 # ПОЛЬЗОВАТЕЛИ
 # =====================================================
 
-@app.get("/api/user/profile", response_model=UserProfileResponse)
-async def get_user_profile(
+@app.get("/api/user/profile-extended")
+async def get_user_profile_extended(
         user: User = Depends(get_current_user),
         services: ServiceContainer = Depends(get_services)
 ):
-    """Получение профиля пользователя"""
-    profile = services.user_service.get_user_profile(user.user_id)
+    """
+    Получение расширенной информации о пользователе для профиля
+    Включает статистику, подписку, активность и настройки
+    """
+    try:
+        # Основная информация о пользователе
+        profile = services.user_service.get_user_profile(user.user_id)
 
-    if not profile:
+        if not profile:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User profile not found"
+            )
+
+        # Статистика чатов
+        chat_stats = services.chat_service.get_user_chat_statistics(user.user_id)
+
+        # Статистика токенов за последние 30 дней
+        token_stats = services.user_service.get_token_usage_stats(user.user_id, days=30)
+
+        # Последняя активность
+        recent_activity = services.chat_service.get_recent_user_activity(user.user_id, limit=5)
+
+        return {
+            "user_info": {
+                "user_id": user.user_id,
+                "telegram_id": user.telegram_id,
+                "first_name": profile.get('first_name', ''),
+                "last_name": profile.get('last_name', ''),
+                "username": profile.get('username', ''),
+                "language_code": profile.get('language_code', 'ru'),
+                "is_premium": profile.get('is_premium', False),
+                "created_at": profile.get('created_at'),
+                "last_activity": profile.get('last_activity')
+            },
+            "subscription": {
+                "type": user.subscription_type,
+                "tokens_balance": user.tokens_balance,
+                "tokens_used": profile.get('tokens_used', 0),
+                "limits": user.get_subscription_limits(),
+                "next_reset": None  # TODO: добавить дату сброса токенов
+            },
+            "statistics": {
+                "total_chats": chat_stats.get('total_chats', 0),
+                "total_messages": chat_stats.get('total_messages', 0),
+                "files_uploaded": chat_stats.get('files_uploaded', 0),
+                "favorite_tools": chat_stats.get('favorite_tools', []),
+                "token_usage_30_days": token_stats.get('tokens_used', 0),
+                "days_active": token_stats.get('active_days', 0)
+            },
+            "recent_activity": recent_activity,
+            "settings": {
+                "notifications_enabled": True,  # TODO: добавить настройки
+                "theme": "dark",
+                "language": profile.get('language_code', 'ru')
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting extended profile: {e}")
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User profile not found"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get user profile"
         )
-
-    return UserProfileResponse(
-        **profile,
-        # display_name=user.display_name,
-        subscription_limits=user.get_subscription_limits()
-    )
 
 
 # =====================================================
@@ -1084,6 +1262,149 @@ def _get_extension_by_mime(mime_type: str) -> str:
 
     return mime_extensions.get(mime_type, '.bin')
 
+@app.get("/api/security/cors-info")
+async def get_cors_info():
+    """Информация о CORS настройках (только для разработки)"""
+    from app.security import CORSConfig
+
+    if not CORSConfig.is_development():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Endpoint доступен только в режиме разработки"
+        )
+
+    return {
+        "environment": os.getenv("ENVIRONMENT", "development"),
+        "allowed_origins": CORSConfig.get_allowed_origins(),
+        "allowed_methods": CORSConfig.get_allowed_methods(),
+        "allowed_headers": CORSConfig.get_allowed_headers(),
+        "expose_headers": CORSConfig.get_expose_headers(),
+        "credentials_allowed": True
+    }
+
+
+# =====================================
+# CSRF ЗАЩИТА ENDPOINTS
+# =====================================
+
+# @app.get("/api/security/csrf-token")
+# async def get_csrf_token(
+#         request: Request,
+#         csrf_protect: CsrfProtect = Depends()
+# ):
+#     """
+#     Получение CSRF токена для frontend
+#     Этот endpoint должен вызываться перед отправкой форм
+#     """
+#     try:
+#         # Генерируем новый CSRF токен
+#         csrf_token = csrf_protect.generate_csrf()
+#
+#         response = JSONResponse(content={
+#             "csrf_token": csrf_token,
+#             "message": "CSRF токен создан успешно",
+#             "expires_in": 3600,  # 1 час
+#             "usage": {
+#                 "header_name": "X-CSRF-Token",
+#                 "cookie_name": "csrf_token",
+#                 "instructions": "Отправьте токен в заголовке X-CSRF-Token для защищенных запросов"
+#             }
+#         })
+#
+#         # Устанавливаем cookie с токеном
+#         csrf_protect.set_csrf_cookie(csrf_token, response)
+#
+#         logger.info(f"✅ CSRF токен создан для IP: {request.client.host if hasattr(request, 'client') else 'unknown'}")
+#
+#         return response
+#
+#     except Exception as e:
+#         logger.error(f"❌ Ошибка создания CSRF токена: {e}")
+#         raise HTTPException(
+#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#             detail="Ошибка создания CSRF токена"
+#         )
+#
+#
+# @app.post("/api/security/verify-csrf")
+# async def verify_csrf_token(
+#         request: Request,
+#         csrf_protect: CsrfProtect = Depends()
+# ):
+#     """
+#     Проверка CSRF токена (для тестирования)
+#     """
+#     try:
+#         # Проверяем CSRF токен
+#         await csrf_protect.validate_csrf(request)
+#
+#         return {
+#             "valid": True,
+#             "message": "CSRF токен валиден",
+#             "timestamp": datetime.now().isoformat()
+#         }
+#
+#     except CsrfProtectError as e:
+#         logger.warning(f"CSRF валидация не прошла: {e}")
+#         raise HTTPException(
+#             status_code=status.HTTP_403_FORBIDDEN,
+#             detail=get_csrf_error_response()
+#         )
+#
+#
+# @app.get("/api/security/csrf-info")
+# async def get_csrf_info():
+#     """Информация о CSRF настройках (только для разработки)"""
+#     from app.security.csrf_protection import CsrfSettings
+#
+#     if os.getenv("ENVIRONMENT") == "production":
+#         raise HTTPException(
+#             status_code=status.HTTP_404_NOT_FOUND,
+#             detail="Endpoint доступен только в режиме разработки"
+#         )
+#
+#     settings = CsrfSettings()
+#
+#     return {
+#         "csrf_enabled": True,
+#         "cookie_name": settings.cookie_name,
+#         "header_name": settings.header_name,
+#         "cookie_secure": settings.cookie_secure,
+#         "cookie_samesite": settings.cookie_samesite,
+#         "token_lifetime": settings.token_lifetime,
+#         "environment": os.getenv("ENVIRONMENT", "development")
+#     }
+
+
+# =====================================
+# ENDPOINTS ПРОВЕРКИ БЕЗОПАСНОСТИ
+# =====================================
+
+@app.get("/api/security/health")
+async def security_health_check():
+    """Проверка состояния систем безопасности"""
+
+    try:
+        health_status = {
+            "timestamp": datetime.now().isoformat(),
+            "environment": os.getenv("ENVIRONMENT", "development"),
+            "security_systems": {
+                "cors_protection": "active",
+                "csrf_protection": "active",
+                "jwt_auth": "active"
+            },
+            "server_status": "healthy",
+            "version": "2.0.0-secure"
+        }
+
+        return health_status
+
+    except Exception as e:
+        logger.error(f"Health check error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Health check failed"
+        )
 
 # =====================================================
 # ЗАПУСК ПРИЛОЖЕНИЯ

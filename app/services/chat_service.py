@@ -200,3 +200,64 @@ class ChatService:
         except Exception as e:
             logger.error(f"Error during empty chats cleanup: {e}")
             return 0
+
+    def get_user_chat_statistics(self, user_id: str) -> Dict[str, Any]:
+        """
+        Получение статистики чатов пользователя
+        """
+        try:
+            # Общее количество чатов
+            total_chats = self.db.query(Chat).filter(Chat.user_id == user_id).count()
+
+            # Общее количество сообщений
+            total_messages = self.db.query(Message).join(Chat).filter(
+                Chat.user_id == user_id
+            ).count()
+
+            # Количество загруженных файлов
+            files_uploaded = self.db.query(Attachment).filter(
+                Attachment.user_id == user_id
+            ).count()
+
+            # Популярные типы чатов
+            chat_types = self.db.query(Chat.type, func.count(Chat.id)).filter(
+                Chat.user_id == user_id
+            ).group_by(Chat.type).all()
+
+            favorite_tools = [{"tool": tool, "count": count} for tool, count in chat_types]
+
+            return {
+                "total_chats": total_chats,
+                "total_messages": total_messages,
+                "files_uploaded": files_uploaded,
+                "favorite_tools": favorite_tools
+            }
+        except Exception as e:
+            logger.error(f"Error getting chat statistics: {e}")
+            return {}
+
+    def get_recent_user_activity(self, user_id: str, limit: int = 5) -> List[Dict]:
+        """
+        Получение последней активности пользователя
+        """
+        try:
+            recent_messages = self.db.query(Message).join(Chat).filter(
+                Chat.user_id == user_id,
+                Message.role == 'user'
+            ).order_by(Message.created_at.desc()).limit(limit).all()
+
+            activity = []
+            for msg in recent_messages:
+                chat = self.db.query(Chat).filter(Chat.chat_id == msg.chat_id).first()
+                activity.append({
+                    "type": "message",
+                    "chat_title": chat.title if chat else "Неизвестный чат",
+                    "content": msg.content[:100] + "..." if len(msg.content) > 100 else msg.content,
+                    "timestamp": msg.created_at.isoformat(),
+                    "chat_id": msg.chat_id
+                })
+
+            return activity
+        except Exception as e:
+            logger.error(f"Error getting recent activity: {e}")
+            return []

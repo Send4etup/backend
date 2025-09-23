@@ -10,7 +10,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 import logging
 
-from app.models import User
+from app.models import User, Message, Chat
 from app.repositories.user_repository import UserRepository
 
 logger = logging.getLogger(__name__)
@@ -85,3 +85,33 @@ class UserService:
             "mega": {"daily_tokens": 620, "max_file_size": 100}
         }
         return limits.get(subscription_type, limits["free"])
+
+    def get_token_usage_stats(self, user_id: str, days: int = 30) -> Dict[str, Any]:
+        """
+        Получение статистики использования токенов
+        """
+        try:
+            from datetime import datetime, timedelta
+
+            start_date = datetime.now() - timedelta(days=days)
+
+            # Подсчет токенов использованных за период
+            tokens_used = self.db.query(func.sum(Message.tokens_count)).join(Chat).filter(
+                Chat.user_id == user_id,
+                Message.created_at >= start_date
+            ).scalar() or 0
+
+            # Количество дней с активностью
+            active_days = self.db.query(func.count(func.distinct(func.date(Message.created_at)))).join(Chat).filter(
+                Chat.user_id == user_id,
+                Message.created_at >= start_date
+            ).scalar() or 0
+
+            return {
+                "tokens_used": tokens_used,
+                "active_days": active_days,
+                "period_days": days
+            }
+        except Exception as e:
+            logger.error(f"Error getting token usage stats: {e}")
+            return {"tokens_used": 0, "active_days": 0, "period_days": days}
