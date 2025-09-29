@@ -830,7 +830,7 @@ async def send_message_with_files(
         elif len(uploaded_files) > 0:
             # Если только файлы - создаем сообщение с описанием файлов
             file_names = [f['file_name'] for f in uploaded_files]
-            auto_message = f"📎 Прикреплены файлы: {', '.join(file_names)}"
+            auto_message = f"Прикреплено файлов: {len(uploaded_files)}"
             user_message = services.chat_service.send_message(
                 chat_id, user.user_id, auto_message, "user"
             )
@@ -859,7 +859,7 @@ async def send_message_with_files(
 
         # Если есть только файлы без текста
         if not message.strip() and uploaded_files:
-            response_data["message"] = f"Загружено файлов: {len(uploaded_files)}"
+            response_data["message"] = f"📎 Прикреплено файлов: {len(uploaded_files)}"
 
         return response_data
 
