@@ -400,33 +400,48 @@ class AIService:
             self,
             message: str,
             context: Dict[str, Any] = {},
-            chat_history: List[Dict[str, str]] = [],
+            chat_history: List[Dict[str, Any]] = [],  # ← Изменили тип на Any
             files_data: List[Dict] = []
     ):
-        """Получить потоковый ответ от GPT с учетом файлов"""
+        """Получить потоковый ответ от GPT с учетом файлов и истории"""
         try:
             logger.info(f"Starting streaming request: message='{message[:50]}...', files_count={len(files_data)}")
 
             tool_type = context.get('tool_type', 'default')
             system_prompt = self.system_prompts.get(tool_type, self.system_prompts['default'])
 
-            # Формируем сообщения для GPT (та же логика)
+            # Формируем сообщения для GPT
             messages = [
                 {"role": "system", "content": system_prompt}
             ]
 
-            # Добавляем историю чата (последние 10 сообщений для контекста)
+            # Добавляем историю чата
             if chat_history:
                 logger.info(f"Adding {len(chat_history)} messages from chat history")
-                for msg in chat_history[-10:]:
-                    role = "user" if msg.get("type") == "user" else "assistant"
-                    content = msg.get("message", "")
-                    if content and not msg.get("is_tool_description"):
-                        # Добавляем информацию о файлах в историческом сообщении
-                        if msg.get("files") and role == "user":
-                            file_info = ", ".join([f["original_name"] for f in msg.get("files", [])])
-                            content += f" [Прикреплены файлы: {file_info}]"
-                        messages.append({"role": role, "content": content})
+
+                # Берем последние N сообщений (можно настроить)
+                recent_history = chat_history[-15:]  # ← Увеличили до 15
+
+                for msg in recent_history:
+                    role = msg.get("role")
+                    content = msg.get("content", "")
+
+                    # Пропускаем пустые сообщения
+                    if not content or not role:
+                        continue
+
+                    # Добавляем информацию о файлах в текст сообщения
+                    if msg.get("files") and role == "user":
+                        file_names = [f.get("original_name", "файл") for f in msg["files"]]
+                        file_info = ", ".join(file_names)
+                        content = f"{content}\n[Прикреплены файлы: {file_info}]"
+
+                    messages.append({
+                        "role": role,
+                        "content": content
+                    })
+
+                logger.info(f"Added {len(recent_history)} history messages to context")
 
             # Подготавливаем контент текущего сообщения с файлами
             if files_data:
@@ -443,7 +458,7 @@ class AIService:
 
             logger.info(f"Sending streaming request to {self.model} with {len(messages)} messages")
 
-            # КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Вызываем GPT с параметром stream=True
+            # Вызываем GPT с потоковым режимом
             stream = await self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
@@ -451,16 +466,15 @@ class AIService:
                 temperature=0.7,
                 presence_penalty=0.1,
                 frequency_penalty=0.1,
-                stream=True  # Включаем потоковый режим
+                stream=True
             )
 
             logger.info("Stream created successfully, starting to yield chunks...")
             chunk_count = 0
 
-            # Генерируем чанки по мере поступления
+            # Генерируем чанки
             async for chunk in stream:
                 chunk_count += 1
-                # Проверяем, есть ли контент в чанке
                 if chunk.choices and len(chunk.choices) > 0 and chunk.choices[0].delta.content is not None:
                     content_piece = chunk.choices[0].delta.content
                     logger.debug(f"Chunk {chunk_count}: '{content_piece[:30]}...'")
@@ -470,8 +484,7 @@ class AIService:
 
         except Exception as e:
             logger.error(f"OpenAI API streaming error: {str(e)}", exc_info=True)
-
-            # При ошибке возвращаем fallback как один чанк
+            # Fallback ответ
             files_context = ""
             if files_data:
                 file_names = [f.get('original_name', 'unknown') for f in files_data]

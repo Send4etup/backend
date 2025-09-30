@@ -95,15 +95,51 @@ class ChatService:
 
         return result
 
-    def get_chat_for_ai_context(self, chat_id: str) -> List[Dict[str, str]]:
-        messages = self.message_repo.get_chat_messages(chat_id, 20)
+    def get_chat_for_ai_context(self, chat_id: str, user_id: str, limit: int = 20) -> List[Dict[str, Any]]:
+        """
+        Получение истории чата для AI с информацией о файлах
 
-        return [
-            {"role": msg.role, "content": msg.content}
-            for msg in messages
-        ]
+        Args:
+            chat_id: ID чата
+            limit: Количество последних сообщений (по умолчанию 20)
+            user_id: ID пользователя
 
-        # messages_data = services.chat_service.get_chat_history(chat_id, user.user_id, limit)
+        Returns:
+            Список сообщений с файлами
+        """
+        messages = self.message_repo.get_chat_messages(chat_id, user_id, limit)
+
+        logger.info(f"Chat {chat_id} has {len(messages)} messages")
+
+        result = []
+        for msg in messages:
+            # Получаем файлы для каждого сообщения
+            attachments = self.attachments_repo.get_message_attachments(msg.message_id)
+
+            # Базовая структура сообщения
+            message_data = {
+                "role": msg.role,
+                "content": msg.content
+            }
+
+            # Добавляем информацию о файлах, если они есть
+            # if attachments:
+            #     files_list = []  # ← Создаем отдельный список
+            #     for att in attachments:
+            #         file_dict = {
+            #             "file_id": str(att.file_id),  # ← Явное приведение к str
+            #             "original_name": str(att.file_name),  # ← Явное приведение к str
+            #             "file_type": str(att.file_type),  # ← Явное приведение к str
+            #             "file_size": int(att.file_size)  # ← Явное приведение к int
+            #         }
+            #         files_list.append(file_dict)
+            #
+            #     message_data["files"] = files_list  # ← Присваиваем список
+
+            result.append(message_data)
+
+        logger.info(f"Retrieved {len(result)} messages for AI context, chat_id={chat_id}")
+        return result
 
     def get_chat_history(self, chat_id: str, user_id, limit: int = 10) -> List[Message]:
 

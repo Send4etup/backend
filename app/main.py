@@ -888,7 +888,8 @@ async def get_ai_response(
             )
 
         # Получаем контекст чата
-        chat_history = services.chat_service.get_chat_for_ai_context(request.chat_id)
+        chat_history = services.chat_service.get_chat_for_ai_context(request.chat_id, user.user_id, 20)
+        logger.info(f"Chat history length: {len(chat_history)}")
 
         # Получаем AI service
         ai_service = get_ai_service()
@@ -902,6 +903,7 @@ async def get_ai_response(
         async def generate_response():
             full_response = ""
             try:
+                logger.info(f"Generating response for user {user.user_id}")
                 # Используем существующий get_response_stream
                 async for chunk in ai_service.get_response_stream(
                         request.message,
