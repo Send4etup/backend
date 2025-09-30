@@ -879,7 +879,7 @@ async def get_ai_response(
         user: User = Depends(require_tokens(2)),
         services: ServiceContainer = Depends(get_services)
 ):
-    """Получение ответа от ИИ"""
+    """Получение STREAMING ответа от ИИ"""
     try:
         if not request.chat_id:
             raise HTTPException(
@@ -887,10 +887,10 @@ async def get_ai_response(
                 detail="Chat ID is required"
             )
 
-        # Получаем контекст чата для ИИ
+        # Получаем контекст чата
         chat_history = services.chat_service.get_chat_for_ai_context(request.chat_id)
 
-        # Получаем ответ от ИИ
+        # Получаем AI service
         ai_service = get_ai_service()
         if not ai_service:
             raise HTTPException(
@@ -898,30 +898,45 @@ async def get_ai_response(
                 detail="AI service is not available"
             )
 
-        ai_response = await ai_service.get_response(
-            request.message,
-            request.context,
-            chat_history,
-            []  # Файлы пока пустые
+        # Функция-генератор для streaming
+        async def generate_response():
+            full_response = ""
+            try:
+                # Используем существующий get_response_stream
+                async for chunk in ai_service.get_response_stream(
+                        request.message,
+                        request.context,
+                        chat_history,
+                        []
+                ):
+                    full_response += chunk
+                    # Отправляем chunk клиенту
+                    yield chunk
+
+                # После завершения - сохраняем полный ответ в БД
+                ai_message = services.chat_service.send_message(
+                    request.chat_id, user.user_id, full_response, "assistant", tokens_count=2
+                )
+
+                # Списываем токены
+                services.user_service.use_tokens(user.user_id, 2)
+
+            except Exception as e:
+                logger.error(f"Streaming error: {e}")
+                yield f"\n\nОшибка: {str(e)}"
+
+        # Возвращаем StreamingResponse
+        return StreamingResponse(
+            generate_response(),
+            media_type="text/plain",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no"
+            }
         )
-
-        # Сохраняем ответ ИИ в чат
-        ai_message = services.chat_service.send_message(
-            request.chat_id, user.user_id, ai_response, "assistant", tokens_count=2
-        )
-
-        # Списываем токены
-        services.user_service.use_tokens(user.user_id, 2)
-
-        return {
-            "message_id": ai_message.message_id,
-            "response": ai_response,
-            "tokens_used": 2,
-            "timestamp": ai_message.created_at.isoformat()
-        }
 
     except Exception as e:
-        logger.error(f"Error getting AI response: {e}")
+        logger.error(f"Error in ai_response: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
