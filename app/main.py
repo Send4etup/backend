@@ -1151,6 +1151,38 @@ async def delete_file(
         )
 
 
+@app.get("/api/files/{file_id}/thumbnail")
+async def get_file_thumbnail(
+        file_id: str,
+        user: User = Depends(get_current_user),
+        services: ServiceContainer = Depends(get_services)
+):
+    """Получение превью изображения"""
+    attachment = services.file_service.attachment_repo.get_by_id(file_id)
+
+    if not attachment:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Проверка прав доступа
+    if attachment.user_id != user.user_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Проверяем есть ли превью
+    if not attachment.thumbnail_path or not Path(attachment.thumbnail_path).exists():
+        # Fallback на оригинал
+        file_path = Path(attachment.file_path)
+    else:
+        file_path = Path(attachment.thumbnail_path)
+
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Thumbnail not found")
+
+    return FileResponse(
+        path=str(file_path),
+        media_type="image/jpeg",
+        headers={"Cache-Control": "public, max-age=31536000"}
+    )
+
 # =====================================================
 # СИСТЕМНЫЕ ЭНДПОИНТЫ
 # =====================================================
