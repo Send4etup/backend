@@ -769,26 +769,26 @@ async def send_message_with_files(
                 detail="Необходимо отправить текст или прикрепить файлы"
             )
 
-        # 1. Создаем или используем существующий чат
-        if not chat_id:
-            chat_title = f"Чат {datetime.now().strftime('%d.%m %H:%M')}"
-            chat_type = tool_type or "general"
-
-            chat = services.chat_service.create_chat(
-                user.user_id,
-                chat_title,
-                chat_type
-            )
-            chat_id = chat.chat_id
-            logger.info(f"Created new chat: {chat_id}")
-        else:
-            # Проверяем что чат принадлежит пользователю
-            chat = services.chat_service.get_chat(chat_id, user.user_id)
-            if not chat:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Chat not found or access denied"
-                )
+        # # 1. Создаем или используем существующий чат
+        # if not chat_id:
+        #     chat_title = f"Чат {datetime.now().strftime('%d.%m %H:%M')}"
+        #     chat_type = tool_type or "general"
+        #
+        #     chat = services.chat_service.create_chat(
+        #         user.user_id,
+        #         chat_title,
+        #         chat_type
+        #     )
+        #     chat_id = chat.chat_id
+        #     logger.info(f"Created new chat: {chat_id}")
+        # else:
+        #     # Проверяем что чат принадлежит пользователю
+        #     chat = services.chat_service.get_chat(chat_id, user.user_id)
+        #     if not chat:
+        #         raise HTTPException(
+        #             status_code=status.HTTP_404_NOT_FOUND,
+        #             detail="Chat not found or access denied"
+        #         )
 
         # 2. Загружаем файлы если есть
         uploaded_files = []
@@ -857,9 +857,28 @@ async def send_message_with_files(
             "timestamp": datetime.now().isoformat()
         }
 
+        for file_data in uploaded_files:
+            if file_data.get('file_type') in SUPPORTED_DOCUMENT_TYPES:
+                try:
+                    from app.services.file_extractor import cleanup_file
+
+                    # Получаем путь к файлу
+                    user_dir = UPLOAD_DIR / user.user_id
+                    file_path = user_dir / file_data['file_name']
+
+                    if cleanup_file(str(file_path)):
+                        logger.info(f"🗑️ Auto-deleted processed file: {file_data['file_name']}")
+
+                except Exception as e:
+                    logger.warning(f"⚠️ Failed to auto-delete file: {e}")
+
         # Если есть только файлы без текста
         if not message.strip() and uploaded_files:
-            response_data["message"] = f"📎 Прикреплено файлов: {len(uploaded_files)}"
+            response_data["message"] = f"Прикреплено файлов: {len(uploaded_files)}"
+
+        # Логируем извлеченный текст из ПЕРВОГО файла (если есть)
+        if uploaded_files and uploaded_files[0].get('extracted_text'):
+            logger.info(f"📄 Extracted text preview: {uploaded_files[0]['extracted_text'][:200]}...")
 
         return response_data
 
@@ -949,7 +968,11 @@ async def get_ai_response(
 # ФАЙЛЫ
 # =====================================================
 
-async def save_uploaded_file(file: UploadFile, user: User, services: ServiceContainer) -> Dict[str, Any]:
+async def save_uploaded_file(
+        file: UploadFile,
+        user: User,
+        services: ServiceContainer
+) -> Dict[str, Any]:
     """Сохранение загруженного файла с полной обработкой"""
 
     # Генерируем уникальный ID файла
@@ -999,7 +1022,29 @@ async def save_uploaded_file(file: UploadFile, user: User, services: ServiceCont
         except Exception as e:
             logger.warning(f"Failed to create thumbnail for {file_path}: {e}")
 
-    # Сохраняем в БД
+    # Извлекаем текст из документов ПЕРЕД сохранением в БД
+    extracted_text = None
+    text_metadata = {}
+
+    if file_type in SUPPORTED_DOCUMENT_TYPES:
+        try:
+            from app.services.file_extractor import extract_text_from_file
+
+            logger.info(f"🔍 Extracting text from {original_name}")
+
+            extraction_result = extract_text_from_file(str(file_path))
+
+            if extraction_result['success']:
+                extracted_text = extraction_result['text']
+                text_metadata = extraction_result['metadata']
+                logger.info(f"✅ Text extracted: {len(extracted_text)} chars from {original_name}")
+            else:
+                logger.warning(f"⚠️ Text extraction failed: {extraction_result['error']}")
+
+        except Exception as e:
+            logger.error(f"❌ Error extracting text: {e}")
+
+    # ✅ Сохраняем в БД с извлеченным текстом
     attachment = services.file_service.attachment_repo.create(
         file_id=file_id,
         user_id=user.user_id,
@@ -1008,10 +1053,13 @@ async def save_uploaded_file(file: UploadFile, user: User, services: ServiceCont
         file_path=str(file_path),
         file_type=file_type,
         file_size=len(content),
-        thumbnail_path=thumbnail_path
+        thumbnail_path=thumbnail_path,
+        extracted_text=extracted_text  # 🔥 Добавляем извлеченный текст
     )
 
-    logger.info(f"File saved: {file_path} ({len(content)} bytes)")
+    logger.info(f"✅ File saved to DB: {file_path} ({len(content)} bytes)")
+    if extracted_text:
+        logger.info(f"✅ Extracted text saved: {len(extracted_text)} characters")
 
     return {
         "file_id": file_id,
@@ -1021,7 +1069,9 @@ async def save_uploaded_file(file: UploadFile, user: User, services: ServiceCont
         "file_size": len(content),
         "file_size_mb": round(len(content) / 1024 / 1024, 2),
         "thumbnail_path": thumbnail_path,
-        "uploaded_at": attachment.uploaded_at.isoformat() if attachment.uploaded_at else datetime.now().isoformat()
+        "uploaded_at": attachment.uploaded_at.isoformat() if attachment.uploaded_at else datetime.now().isoformat(),
+        "extracted_text": extracted_text,  # Возвращаем также в ответе
+        "text_metadata": text_metadata
     }
 
 

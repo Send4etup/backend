@@ -183,7 +183,7 @@ async def main():
     migrator = DatabaseMigrator()
 
     try:
-        test_user = await migrator.migrate_sample_data()
+        # test_user = await migrator.migrate_sample_data()
 
         # 3. Проверяем результат
         if migrator.verify_migration():
@@ -192,8 +192,8 @@ async def main():
             print("=" * 60)
             print(f"📍 Database file: {settings.DATABASE_URL}")
             # print(f"👤 Test user created: {test_user.display_name}")
-            print(f"🔑 User ID: {test_user.user_id}")
-            print(f"📱 Telegram ID: {test_user.telegram_id}")
+            # print(f"🔑 User ID: {test_user.user_id}")
+            # print(f"📱 Telegram ID: {test_user.telegram_id}")
             print("\n🚀 You can now start the FastAPI server:")
             print("   python app/main.py")
             print("   # ИЛИ")

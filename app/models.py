@@ -208,6 +208,8 @@ class Attachment(Base):
     file_hash = Column(String, nullable=True)  # Хеш для дедупликации
     thumbnail_path = Column(String, nullable=True)  # Путь к превью для изображений
 
+    extracted_text = Column(String, nullable=True)
+
     uploaded_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
