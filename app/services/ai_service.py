@@ -355,7 +355,7 @@ class AIService:
             logger.error(f"Error extracting text from {file_path}: {e}")
             return f"Ошибка при обработке файла: {str(e)}"
 
-    async def prepare_message_content(self, message: str, files_data: List[Dict]) -> List[Dict]:
+    async def prepare_message_content(self, message: str, files_text: str) -> List[Dict]:
         """Подготовка контента сообщения с файлами для OpenAI API"""
         content = [{"type": "text", "text": message}]
 
@@ -401,11 +401,11 @@ class AIService:
             message: str,
             context: Dict[str, Any] = {},
             chat_history: List[Dict[str, Any]] = [],  # ← Изменили тип на Any
-            files_data: List[Dict] = []
+            files_context: str = '',
     ):
         """Получить потоковый ответ от GPT с учетом файлов и истории"""
         try:
-            logger.info(f"Starting streaming request: message='{message[:50]}...', files_count={len(files_data)}")
+            logger.info(f"Starting streaming request: message='{message[:50]}...', files_count={len(files_context)}")
 
             tool_type = context.get('tool_type', 'default')
             system_prompt = self.system_prompts.get(tool_type, self.system_prompts['default'])
@@ -444,9 +444,10 @@ class AIService:
                 logger.info(f"Added {len(recent_history)} history messages to context")
 
             # Подготавливаем контент текущего сообщения с файлами
-            if files_data:
-                logger.info(f"Preparing message content with {len(files_data)} files")
-                message_content = await self.prepare_message_content(message, files_data)
+            if files_context:
+                logger.info(f"Preparing message content with {len(files_context)} files")
+                # message_content = await self.prepare_message_content(message, files_context)
+                message_content = "Текст от пользователя:\n" + message + "\n Извлеченный текст из файла:\n" + files_context
             else:
                 message_content = message
 

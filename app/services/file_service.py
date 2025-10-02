@@ -23,7 +23,7 @@ class FileService:
         self.user_repo = UserRepository(db)
 
     def save_file(self, user_id: str, file_name: str, file_path: str,
-                  file_type: str, file_size: int, message_id: Optional[int] = None) -> Attachment:
+                  file_type: str, file_size: int, message_id: Optional[str] = None) -> Attachment:
         """Сохранение файла в БД"""
         # Проверяем существование пользователя
         user = self.user_repo.get_by_id(user_id)
@@ -138,3 +138,43 @@ class FileService:
             "mega": {"max_file_size": 100}
         }
         return limits.get(subscription_type, limits["free"])
+
+    def get_files_text_by_ids(self, file_ids: List[str]) -> str:
+        """
+        Получает извлечённый текст из файлов по их ID
+
+        Args:
+            file_ids: список ID файлов из БД
+
+        Returns:
+            Объединённый текст из всех файлов с разделителями
+        """
+        if not file_ids:
+            return ""
+
+        try:
+            files = (self.db.query(Attachment)
+                     .filter(Attachment.file_id.in_(file_ids))
+                     .all())
+
+            if not files:
+                logger.warning(f"No files found for IDs: {file_ids}")
+                return ""
+
+            # Собираем тексты с информацией о файле
+            texts = []
+            for file in files:
+                if file.extracted_text:
+                    texts.append(
+                        f"\n{'=' * 50}\n"
+                        f"📄 Файл: {file.original_name}\n"
+                        f"Тип: {file.file_type}\n"
+                        f"{'=' * 50}\n"
+                        f"{file.extracted_text}\n"
+                    )
+
+            return "\n".join(texts)
+
+        except Exception as e:
+            logger.error(f"Error getting files text: {e}")
+            return ""

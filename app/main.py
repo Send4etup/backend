@@ -151,6 +151,7 @@ class AIResponseRequest(BaseModel):
     message: str
     chat_id: Optional[str] = None
     context: Optional[Dict[str, Any]] = {}
+    file_ids: Optional[List[str]] = None
 
 
 class UserProfileResponse(BaseModel):
@@ -758,7 +759,6 @@ async def send_message_with_files(
 ):
     """
     Отправка сообщения с файлами одним запросом
-    Этот endpoint КРИТИЧНО нужен для работы фронтенда
     """
     try:
         logger.info(f"Sending message with {len(files)} files from user {user.user_id}")
@@ -769,28 +769,24 @@ async def send_message_with_files(
                 detail="Необходимо отправить текст или прикрепить файлы"
             )
 
-        # # 1. Создаем или используем существующий чат
-        # if not chat_id:
-        #     chat_title = f"Чат {datetime.now().strftime('%d.%m %H:%M')}"
-        #     chat_type = tool_type or "general"
-        #
-        #     chat = services.chat_service.create_chat(
-        #         user.user_id,
-        #         chat_title,
-        #         chat_type
-        #     )
-        #     chat_id = chat.chat_id
-        #     logger.info(f"Created new chat: {chat_id}")
-        # else:
-        #     # Проверяем что чат принадлежит пользователю
-        #     chat = services.chat_service.get_chat(chat_id, user.user_id)
-        #     if not chat:
-        #         raise HTTPException(
-        #             status_code=status.HTTP_404_NOT_FOUND,
-        #             detail="Chat not found or access denied"
-        #         )
+        # ✅ 1. СНАЧАЛА создаем сообщение пользователя
+        user_message = None
 
-        # 2. Загружаем файлы если есть
+        if message.strip():
+            # Если есть текст - используем его
+            user_message = services.chat_service.send_message(
+                chat_id, user.user_id, message, "user"
+            )
+            logger.info(f"✅ Sent user message: {user_message.message_id}")
+        elif len(files) > 0:
+            # Если только файлы - создаем placeholder сообщение
+            auto_message = f"Прикреплено файлов: {len(files)}"
+            user_message = services.chat_service.send_message(
+                chat_id, user.user_id, auto_message, "user"
+            )
+            logger.info(f"✅ Sent auto-generated message for files: {user_message.message_id}")
+
+        # ✅ 2. ТЕПЕРЬ загружаем файлы (user_message уже существует)
         uploaded_files = []
         file_errors = []
 
@@ -808,10 +804,12 @@ async def send_message_with_files(
                     file_errors.append(f"{file.filename}: превышен лимит {limits['max_file_size_mb']} MB")
                     continue
 
-                await file.seek(0)  # Возвращаем указатель
+                await file.seek(0)
 
-                # Сохраняем файл
-                file_data = await save_uploaded_file(file, user, services)
+                # ✅ Теперь user_message.message_id точно существует
+                file_data = await save_uploaded_file(
+                    file, user, services, user_message.message_id
+                )
                 uploaded_files.append(file_data)
 
                 logger.info(f"Uploaded file: {file.filename} -> {file_data['file_id']}")
@@ -820,33 +818,17 @@ async def send_message_with_files(
                 logger.error(f"Error uploading file {file.filename}: {e}")
                 file_errors.append(f"{file.filename}: {str(e)}")
 
-        # 3. Отправляем сообщение пользователя ТОЛЬКО если есть текст
-        user_message = None
-        if message.strip():  # 🔧 ПРОВЕРЯЕМ что есть текст
-            user_message = services.chat_service.send_message(
-                chat_id, user.user_id, message, "user"
-            )
-            logger.info(f"✅ Sent user message: {user_message.message_id}")
-        elif len(uploaded_files) > 0:
-            # Если только файлы - создаем сообщение с описанием файлов
-            file_names = [f['file_name'] for f in uploaded_files]
-            auto_message = f"Прикреплено файлов: {len(uploaded_files)}"
-            user_message = services.chat_service.send_message(
-                chat_id, user.user_id, auto_message, "user"
-            )
-            logger.info(f"✅ Sent auto-generated message for files: {user_message.message_id}")
-
-        # 4. Списываем токены за сообщение
-        tokens_used = 1  # Базовая стоимость сообщения
-        tokens_used += len(uploaded_files) * 2  # +2 токена за каждый файл
+        # 3. Списываем токены за сообщение
+        tokens_used = 1
+        tokens_used += len(uploaded_files) * 2
 
         if user.tokens_balance >= tokens_used:
             services.user_service.use_tokens(user.user_id, tokens_used)
             logger.info(f"Deducted {tokens_used} tokens from user {user.user_id}")
         else:
-            logger.warning(f"User {user.user_id} has insufficient tokens: {user.tokens_balance} < {tokens_used}")
+            logger.warning(f"User {user.user_id} has insufficient tokens")
 
-        # 5. Формируем ответ
+        # 4. Формируем ответ
         response_data = {
             "status": "success",
             "chat_id": chat_id,
@@ -857,12 +839,12 @@ async def send_message_with_files(
             "timestamp": datetime.now().isoformat()
         }
 
+        # 5. Удаляем обработанные документы
         for file_data in uploaded_files:
             if file_data.get('file_type') in SUPPORTED_DOCUMENT_TYPES:
                 try:
                     from app.services.file_extractor import cleanup_file
 
-                    # Получаем путь к файлу
                     user_dir = UPLOAD_DIR / user.user_id
                     file_path = user_dir / file_data['file_name']
 
@@ -872,11 +854,7 @@ async def send_message_with_files(
                 except Exception as e:
                     logger.warning(f"⚠️ Failed to auto-delete file: {e}")
 
-        # Если есть только файлы без текста
-        if not message.strip() and uploaded_files:
-            response_data["message"] = f"Прикреплено файлов: {len(uploaded_files)}"
-
-        # Логируем извлеченный текст из ПЕРВОГО файла (если есть)
+        # Логируем извлеченный текст
         if uploaded_files and uploaded_files[0].get('extracted_text'):
             logger.info(f"📄 Extracted text preview: {uploaded_files[0]['extracted_text'][:200]}...")
 
@@ -910,6 +888,12 @@ async def get_ai_response(
         chat_history = services.chat_service.get_chat_for_ai_context(request.chat_id, user.user_id, 20)
         logger.info(f"Chat history length: {len(chat_history)}")
 
+        files_context = ""
+        if request.file_ids:
+            files_context = services.file_service.get_files_text_by_ids(request.file_ids)
+            logger.info(f"Loaded {len(request.file_ids)} files for context")
+            logger.info(f"Loaded {len(files_context)} chars from files")
+
         # Получаем AI service
         ai_service = get_ai_service()
         if not ai_service:
@@ -921,6 +905,7 @@ async def get_ai_response(
         # Функция-генератор для streaming
         async def generate_response():
             full_response = ""
+
             try:
                 logger.info(f"Generating response for user {user.user_id}")
                 # Используем существующий get_response_stream
@@ -928,10 +913,9 @@ async def get_ai_response(
                         request.message,
                         request.context,
                         chat_history,
-                        []
+                        files_context,
                 ):
                     full_response += chunk
-                    # Отправляем chunk клиенту
                     yield chunk
 
                 # После завершения - сохраняем полный ответ в БД
@@ -971,7 +955,9 @@ async def get_ai_response(
 async def save_uploaded_file(
         file: UploadFile,
         user: User,
-        services: ServiceContainer
+        services: ServiceContainer,
+        message_id: str,
+
 ) -> Dict[str, Any]:
     """Сохранение загруженного файла с полной обработкой"""
 
@@ -1047,6 +1033,7 @@ async def save_uploaded_file(
     # ✅ Сохраняем в БД с извлеченным текстом
     attachment = services.file_service.attachment_repo.create(
         file_id=file_id,
+        message_id=message_id,
         user_id=user.user_id,
         file_name=safe_filename,
         original_name=original_name,

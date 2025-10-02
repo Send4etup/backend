@@ -21,7 +21,7 @@ class MessageRepository(BaseRepository[Message]):
         return (self.db.query(Message)
                 .filter(Message.user_id == user_id)
                 .filter(Message.chat_id == chat_id)
-                .order_by(Message.created_at.asc())
+                .order_by(Message.created_at.desc())
                 .limit(limit)
                 .all())
 

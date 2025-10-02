@@ -108,6 +108,7 @@ class ChatService:
             Список сообщений с файлами
         """
         messages = self.message_repo.get_chat_messages(chat_id, user_id, limit)
+        messages = list(reversed(messages))
 
         logger.info(f"Chat {chat_id} has {len(messages)} messages")
 
@@ -123,34 +124,37 @@ class ChatService:
             }
 
             # Добавляем информацию о файлах, если они есть
-            # if attachments:
-            #     files_list = []  # ← Создаем отдельный список
-            #     for att in attachments:
-            #         file_dict = {
-            #             "file_id": str(att.file_id),  # ← Явное приведение к str
-            #             "original_name": str(att.file_name),  # ← Явное приведение к str
-            #             "file_type": str(att.file_type),  # ← Явное приведение к str
-            #             "file_size": int(att.file_size)  # ← Явное приведение к int
-            #         }
-            #         files_list.append(file_dict)
-            #
-            #     message_data["files"] = files_list  # ← Присваиваем список
+            if attachments:
+                files_list = []  # ← Создаем отдельный список
+                for att in attachments:
+                    file_dict = {
+                        "file_id": str(att.file_id),  # ← Явное приведение к str
+                        "original_name": str(att.file_name),  # ← Явное приведение к str
+                        "file_type": str(att.file_type),  # ← Явное приведение к str
+                        "file_size": int(att.file_size),  # ← Явное приведение к int
+                        "extracted_text": str(att.extracted_text)
+                    }
+                    files_list.append(file_dict)
+
+                message_data["files"] = files_list  # ← Присваиваем список
+                logger.info(f"History of chat {msg.chat_id} has {len(attachments)} attachments")
 
             result.append(message_data)
 
         logger.info(f"Retrieved {len(result)} messages for AI context, chat_id={chat_id}")
         return result
 
-    def get_chat_history(self, chat_id: str, user_id, limit: int = 10) -> List[Message]:
+    def get_chat_history(self, chat_id: str, user_id, limit: int = 50) -> List[Message]:
 
         messages = self.message_repo.get_chat_messages(chat_id, user_id, limit)
+        messages = list(reversed(messages))
 
         for msg in messages:
             attachments = self.attachments_repo.get_message_attachments(msg.message_id)
 
             if attachments:
                 msg.attachments = attachments
-            logger.info(f"Message {msg.chat_id} has {len(msg.attachments)} attachments")
+            logger.info(f"Message {msg.message_id} has {len(msg.attachments)} attachments")
 
         logger.info(f"User {user_id} has {len(messages)} messages")
 
