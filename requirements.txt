@@ -99,7 +99,6 @@ python-decouple==3.8
 rich==13.7.0
 tenacity==8.2.3
 
-cryptography==41.0.7
 PyJWT==2.8.0
 
 fastapi-csrf-protect==0.3.4

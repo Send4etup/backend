@@ -132,7 +132,7 @@ class ChatService:
                         "original_name": str(att.file_name),  # ← Явное приведение к str
                         "file_type": str(att.file_type),  # ← Явное приведение к str
                         "file_size": int(att.file_size),  # ← Явное приведение к int
-                        "extracted_text": str(att.extracted_text)
+                        "extracted_text": str(att.extracted_text) if att.extracted_text else None
                     }
                     files_list.append(file_dict)
 
