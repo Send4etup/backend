@@ -9,9 +9,7 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import uuid
-import asyncio
 import os
-import json
 from pathlib import Path
 from datetime import datetime
 import logging
@@ -26,23 +24,24 @@ from app.dependencies import (
     ServiceContainer, security
 )
 from app.models import User, Chat, Message, Attachment
-from app.services.ai_service import get_ai_service
+from app.services.ai import (
+    get_ai_service,
+    ImageProcessor,
+    AudioProcessor,
+    DocumentProcessor
+)
 from app.startup import startup_event, shutdown_event
 
 from app.security import CORSConfig
 from app.services.telegram_validator import (
     validate_telegram_init_data,
-    TelegramDataValidationError,
-    init_telegram_validator
+    TelegramDataValidationError
 )
-from app.services.telegram_validator import init_telegram_validator
-from app.config import settings
 
 # from fastapi_csrf_protect import CsrfProtect
 # from fastapi_csrf_protect.exceptions import CsrfProtectError
 # from app.security import CORSConfig, init_csrf_protection, get_csrf_error_response
 
-import mimetypes
 import magic
 from PIL import Image
 
@@ -727,8 +726,7 @@ async def send_message(
     """Отправка текстового сообщения"""
     try:
 
-
-        user_message = services.chat_service.send_message(
+        user_message = await services.chat_service.send_message(
             request.chat_id, user.user_id, request.message, "user"
         )
 
@@ -961,127 +959,202 @@ async def save_uploaded_file(
 ) -> Dict[str, Any]:
     """Сохранение загруженного файла с полной обработкой"""
 
-    # Генерируем уникальный ID файла
-    file_id = str(uuid.uuid4())
-
-    # Определяем MIME тип
-    content = await file.read()
-    await file.seek(0)
-
     try:
-        import magic
-        detected_type = magic.from_buffer(content, mime=True)
-        file_type = detected_type if detected_type else file.content_type
-    except:
-        file_type = file.content_type or 'application/octet-stream'
+        # Генерируем уникальный ID файла
+        file_id = str(uuid.uuid4())
 
-    # Проверяем поддерживаемые типы
-    all_supported_types = SUPPORTED_IMAGE_TYPES | SUPPORTED_DOCUMENT_TYPES | SUPPORTED_AUDIO_TYPES
+        # Определяем MIME тип
+        content = await file.read()
+        await file.seek(0)
 
-    if file_type not in all_supported_types:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unsupported file type: {file_type}"
+        try:
+            detected_type = magic.from_buffer(content, mime=True)
+            file_type = detected_type if detected_type else file.content_type
+        except:
+            file_type = file.content_type or 'application/octet-stream'
+
+        logger.info(f"📁 Uploading file: {file.filename}, type: {file_type}, size: {len(content)} bytes")
+
+        all_supported_types = (
+                SUPPORTED_IMAGE_TYPES |
+                SUPPORTED_DOCUMENT_TYPES |
+                SUPPORTED_AUDIO_TYPES
         )
 
-    # Создаем директорию пользователя
-    user_dir = UPLOAD_DIR / user.user_id
-    user_dir.mkdir(exist_ok=True)
+        if file_type not in all_supported_types:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Unsupported file type: {file_type}"
+            )
 
-    # Определяем расширение файла
-    original_name = file.filename or f"file_{file_id}"
-    file_extension = Path(original_name).suffix or _get_extension_by_mime(file_type)
+        # Создаем директорию пользователя
+        user_dir = UPLOAD_DIR / user.user_id
+        user_dir.mkdir(exist_ok=True)
 
-    # Создаем путь файла
-    safe_filename = f"{file_id}{file_extension}"
-    file_path = user_dir / safe_filename
+        # Определяем расширение файла
+        original_name = file.filename or f"file_{file_id}"
+        file_extension = Path(original_name).suffix or _get_extension_by_mime(file_type)
 
-    # Сохраняем файл на диск
-    with open(file_path, "wb") as buffer:
-        buffer.write(content)
+        # Создаем путь файла
+        safe_filename = f"{file_id}{file_extension}"
+        file_path = user_dir / safe_filename
 
-    # Создаем thumbnail для изображений
-    thumbnail_path = None
-    if file_type in SUPPORTED_IMAGE_TYPES:
-        try:
-            thumbnail_path = await create_thumbnail(file_path, user_dir)
-        except Exception as e:
-            logger.warning(f"Failed to create thumbnail for {file_path}: {e}")
+        # Сохраняем файл на диск
+        with open(file_path, "wb") as buffer:
+            buffer.write(content)
 
-    # Извлекаем текст из документов ПЕРЕД сохранением в БД
-    extracted_text = None
-    text_metadata = {}
+        ai_service = get_ai_service()
 
-    if file_type in SUPPORTED_DOCUMENT_TYPES:
-        try:
-            from app.services.file_extractor import extract_text_from_file
+        # Создаем thumbnail для изображений
+        if not ai_service:
+            logger.warning("⚠️ AI service not available, skipping advanced processing")
+            # Продолжаем без AI обработки
+            extracted_text = None
+            thumbnail_path = None
+        else:
+            extracted_text = None
+            thumbnail_path = None
 
-            logger.info(f"🔍 Extracting text from {original_name}")
+            # ОБРАБОТКА ИЗОБРАЖЕНИЙ
+            if file_type in SUPPORTED_IMAGE_TYPES:
+                logger.info("📸 Processing image file...")
 
-            extraction_result = extract_text_from_file(str(file_path))
+                try:
 
-            if extraction_result['success']:
-                extracted_text = extraction_result['text']
-                text_metadata = extraction_result['metadata']
-                logger.info(f"✅ Text extracted: {len(extracted_text)} chars from {original_name}")
-            else:
-                logger.warning(f"⚠️ Text extraction failed: {extraction_result['error']}")
+                    # Валидация изображения
+                    if ai_service.image_processor.validate_image(str(file_path)):
+                        # Создание thumbnail
+                        thumbnail_path = ai_service.image_processor.create_thumbnail(
+                            str(file_path),
+                            str(user_dir / f"thumb_{safe_filename}"),
+                            size=(200, 200)
+                        )
 
-        except Exception as e:
-            logger.error(f"❌ Error extracting text: {e}")
+                        try:
+                            extracted_text = await ai_service.analyze_image(
+                                str(file_path),
+                            )
 
-    # ✅ Сохраняем в БД с извлеченным текстом
-    attachment = services.file_service.attachment_repo.create(
-        file_id=file_id,
-        message_id=message_id,
-        user_id=user.user_id,
-        file_name=safe_filename,
-        original_name=original_name,
-        file_path=str(file_path),
-        file_type=file_type,
-        file_size=len(content),
-        thumbnail_path=thumbnail_path,
-        extracted_text=extracted_text  # 🔥 Добавляем извлеченный текст
-    )
+                            if extracted_text and not extracted_text.startswith("Ошибка"):
+                                logger.info(f"✅ Text extracted from image: {len(extracted_text)} characters")
+                            else:
+                                logger.warning(f"⚠️ Image text extraction failed or returned error")
+                                extracted_text = None
 
-    logger.info(f"✅ File saved to DB: {file_path} ({len(content)} bytes)")
-    if extracted_text:
-        logger.info(f"✅ Extracted text saved: {len(extracted_text)} characters")
+                        except Exception as extract_error:
+                            logger.error(f"❌ Error extracting text from image: {extract_error}")
+                            extracted_text = None
 
-    return {
-        "file_id": file_id,
-        "file_name": safe_filename,
-        "original_name": original_name,
-        "file_type": file_type,
-        "file_size": len(content),
-        "file_size_mb": round(len(content) / 1024 / 1024, 2),
-        "thumbnail_path": thumbnail_path,
-        "uploaded_at": attachment.uploaded_at.isoformat() if attachment.uploaded_at else datetime.now().isoformat(),
-        "extracted_text": extracted_text,  # Возвращаем также в ответе
-        "text_metadata": text_metadata
-    }
+                        logger.info(f"✅ Image processed, thumbnail created: {thumbnail_path}")
+                    else:
+                        logger.warning("⚠️ Image validation failed")
 
+                except Exception as e:
+                    logger.error(f"❌ Error processing image: {e}")
 
-async def create_thumbnail(image_path: Path, output_dir: Path, size: tuple = (200, 200)) -> str:
-    """Создание превью изображения"""
-    try:
-        with Image.open(image_path) as img:
-            img.thumbnail(size, Image.Resampling.LANCZOS)
+            # ОБРАБОТКА АУДИО
+            elif file_type in SUPPORTED_AUDIO_TYPES:
+                logger.info("🎧 Processing audio file...")
 
-            thumbnail_name = f"thumb_{image_path.name}"
-            thumbnail_path = output_dir / thumbnail_name
+                try:
+                    # Валидация аудио
+                    is_valid, error_msg = ai_service.audio_processor.validate_audio_file(
+                        str(file_path)
+                    )
 
-            # Конвертируем в RGB если нужно
-            if img.mode in ("RGBA", "P"):
-                img = img.convert("RGB")
+                    if is_valid:
+                        # Конвертация в MP3 если нужно
+                        mp3_path = await ai_service.audio_processor.convert_audio_to_mp3(
+                            str(file_path)
+                        )
 
-            img.save(thumbnail_path, "JPEG", quality=85)
-            return str(thumbnail_path)
+                        # Обновляем путь если файл был конвертирован
+                        if mp3_path != str(file_path):
+                            file_path = Path(mp3_path)
+                            safe_filename = file_path.name
+                            file_extension = file_path.suffix
+                            logger.info(f"✅ Audio converted to MP3: {mp3_path}")
 
-    except Exception as e:
-        logger.error(f"Error creating thumbnail: {e}")
+                        # Транскрипция (опционально, можно включить)
+                        extracted_text = await ai_service.transcribe_audio(str(file_path))
+                        logger.info(f"✅ Audio transcribed: {len(extracted_text)} chars")
+                    else:
+                        logger.warning(f"⚠️ Audio validation failed: {error_msg}")
+
+                except Exception as e:
+                    logger.error(f"❌ Error processing audio: {e}")
+
+            # ОБРАБОТКА ДОКУМЕНТОВ
+            elif file_type in SUPPORTED_DOCUMENT_TYPES:
+                logger.info("📄 Processing document file...")
+
+                try:
+                    # Валидация документа
+                    is_valid, error_msg = ai_service.document_processor.validate_document(
+                        str(file_path)
+                    )
+
+                    if is_valid:
+                        # Извлечение текста
+                        extracted_text = await ai_service.extract_text_from_file(
+                            str(file_path),
+                            file_type
+                        )
+
+                        if extracted_text and not extracted_text.startswith("Ошибка"):
+                            logger.info(f"✅ Text extracted: {len(extracted_text)} characters")
+                        else:
+                            logger.warning(f"⚠️ Text extraction failed or returned error")
+                            extracted_text = None
+                    else:
+                        logger.warning(f"⚠️ Document validation failed: {error_msg}")
+
+                except Exception as e:
+                    logger.error(f"❌ Error processing document: {e}")
+
+        # ✅ Сохраняем в БД с извлеченным текстом
+        attachment = services.file_service.attachment_repo.create(
+            file_id=file_id,
+            message_id=message_id,
+            user_id=user.user_id,
+            file_name=safe_filename,
+            original_name=original_name,
+            file_path=str(file_path),
+            file_type=file_type,
+            file_size=len(content),
+            thumbnail_path=thumbnail_path,
+            extracted_text=extracted_text
+        )
+
+        logger.info(f"✅ File saved to DB: {file_path} ({len(content)} bytes)")
+        if extracted_text:
+            logger.info(f"✅ Extracted text saved: {len(extracted_text)} characters")
+
+        return {
+            "file_id": file_id,
+            "file_name": safe_filename,
+            "original_name": original_name,
+            "file_type": file_type,
+            "file_size": len(content),
+            "file_size_mb": round(len(content) / 1024 / 1024, 2),
+            "thumbnail_path": thumbnail_path,
+            "uploaded_at": attachment.uploaded_at.isoformat() if attachment.uploaded_at else datetime.now().isoformat(),
+            "extracted_text": extracted_text,
+            "processing_status": {
+                "image_processed": file_type in SUPPORTED_IMAGE_TYPES and thumbnail_path is not None,
+                "audio_processed": file_type in SUPPORTED_AUDIO_TYPES,
+                "document_processed": file_type in SUPPORTED_DOCUMENT_TYPES and extracted_text is not None,
+                "ai_service_available": ai_service is not None
+            }
+        }
+    except HTTPException:
         raise
-
+    except Exception as e:
+        logger.error(f"❌ Error in save_uploaded_file: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to save file: {str(e)}"
+        )
 
 @app.post("/api/files/upload", response_model=FileResponse)
 async def upload_file(

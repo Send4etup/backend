@@ -9,6 +9,7 @@ from app.repositories.attachment_repository import AttachmentRepository
 from app.models import Chat, Message, Attachment
 import logging
 import os
+from app.services.ai.ai_service import AIService
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,8 @@ class ChatService:
         logger.info(f"Chat created: {chat.chat_id} for user {user_id}")
         return chat
 
-    def send_message(self, chat_id: str, user_id: str, content: str, role: str = "user", tokens_count: int = 0) -> Message:
+    async def send_message(self, chat_id: str, user_id: str, content: str, role: str = "user",
+                           tokens_count: int = 0) -> Message:
         chat = self.chat_repo.get_by_id(chat_id)
         if not chat:
             raise ValueError(f"Chat not found: {chat_id}")
@@ -37,6 +39,31 @@ class ChatService:
         if chat.user_id != user_id:
             raise ValueError(f"Access denied to chat {chat_id}")
 
+        if chat.messages_count == 0 and content:
+            try:
+                from app.services.ai import get_ai_service
+
+                ai_service = get_ai_service()
+                if ai_service:
+                    chat.title = await ai_service.get_chat_title(
+                        chat_id=chat_id,
+                        prompt=content,
+                        tool_type=chat.type
+                    )
+                    logger.info(f"AI-generated title: '{chat.title}'")
+                else:
+                    # Фолбэк: простое название
+                    words = content.strip().split()[:5]
+                    chat.title = " ".join(words)[:50]
+            except Exception as e:
+                logger.error(f"AI title generation failed: {e}")
+                # Фолбэк при ошибке
+                words = content.strip().split()[:5]
+                chat.title = " ".join(words)[:50]
+
+            self.db.commit()
+
+        # Создаем сообщение
         message = self.message_repo.create_message(
             chat_id, user_id, role, content, tokens_count
         )

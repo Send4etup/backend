@@ -4,8 +4,6 @@
 """
 from app.config import settings
 from app.services.telegram_validator import init_telegram_validator
-from app.database import init_database
-from app.services.ai_service import get_ai_service
 import logging
 import os
 
@@ -59,7 +57,7 @@ async def startup_event():
 
         # 6. Проверяем доступность AI сервиса
         try:
-            from app.services.ai_service import get_ai_service
+            from app.services.ai.ai_service import get_ai_service
             ai_service = get_ai_service()
             if ai_service:
                 health_check = await ai_service.health_check()
