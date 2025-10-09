@@ -100,7 +100,10 @@ class ImageProcessor:
             '.png': 'image/png',
             '.gif': 'image/gif',
             '.webp': 'image/webp',
-            '.bmp': 'image/bmp'
+            '.bmp': 'image/bmp',
+            '.heic': 'image/heic',
+            '.ico': 'image/x-icon',
+            '.heif': 'image/heif',
         }
 
         mime_type = mime_types.get(extension, 'image/jpeg')

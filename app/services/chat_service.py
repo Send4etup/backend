@@ -39,6 +39,8 @@ class ChatService:
         if chat.user_id != user_id:
             raise ValueError(f"Access denied to chat {chat_id}")
 
+        logger.info("Sending message")
+
         if chat.messages_count == 0 and content:
             try:
                 from app.services.ai import get_ai_service

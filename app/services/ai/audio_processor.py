@@ -196,7 +196,7 @@ class AudioProcessor:
             prompt: Подсказка для улучшения транскрипции
 
         Returns:
-            Текст транскрипции или сообщение об ошибке
+            Текст транскрипции (может быть пустой строкой) или сообщение об ошибке
         """
         try:
             if not self.client:
@@ -205,7 +205,7 @@ class AudioProcessor:
             file_name = Path(file_path).name
             original_size = os.path.getsize(file_path) / (1024 * 1024)
 
-            logger.info(f"Processing audio file: {file_name} ({original_size:.1f} MB)")
+            logger.info(f"🎙️ Обработка аудиофайла: {file_name} ({original_size:.1f} MB)")
 
             # Конвертируем аудио в MP3 для лучшей совместимости
             mp3_file_path = await self.convert_audio_to_mp3(file_path)
@@ -223,7 +223,7 @@ class AudioProcessor:
                 return error_msg
 
             logger.info(
-                f"Using audio file for transcription: "
+                f"📤 Отправка на транскрибацию: "
                 f"{Path(mp3_file_path).name} ({final_size:.1f} MB)"
             )
 
@@ -233,49 +233,67 @@ class AudioProcessor:
                 transcription_params = {
                     "model": "whisper-1",
                     "file": audio_file,
+                    "response_format": "text",  # ✅ Получаем только текст, без метаданных
                 }
 
-                # Добавляем опциональные параметры
+                # Добавляем язык если указан
                 if language:
                     transcription_params["language"] = language
+                    logger.debug(f"Установлен язык: {language}")
 
+                # ✅ КРИТИЧНО: Промпт помогает Whisper правильно распознавать контекст
                 if prompt:
                     transcription_params["prompt"] = prompt
+                    logger.debug(f"Использован промпт: {prompt[:100]}...")
 
-                # Выполняем транскрипцию
+                # Выполняем транскрибацию
                 transcription = await self.client.audio.transcriptions.create(
                     **transcription_params
                 )
 
-            # Получаем текст из объекта транскрипции
-            transcription_text = transcription.text
+            # ✅ ВАЖНО: При response_format="text" возвращается строка напрямую
+            # При дефолтном формате нужно использовать transcription.text
+            if isinstance(transcription, str):
+                transcription_text = transcription
+            else:
+                transcription_text = transcription.text if hasattr(transcription, 'text') else str(transcription)
 
+            # ✅ ПРОВЕРКА НА ПУСТОЙ/НУЛЕВОЙ РЕЗУЛЬТАТ
             if not transcription_text or not transcription_text.strip():
-                error_msg = f"Не удалось распознать речь в файле {file_name}"
-                logger.warning(error_msg)
-                return error_msg
+                logger.warning(f"⚠️ Whisper не распознал речь в файле {file_name}")
+                # Возвращаем пустую строку (не ошибку!) - это нормальный случай для тихого/шумного аудио
+                return ""
 
             logger.info(
-                f"Audio transcription completed for {file_name}, "
-                f"text length: {len(transcription_text)} characters"
+                f"✅ Транскрибация завершена для {file_name}, "
+                f"распознано символов: {len(transcription_text)}"
             )
 
             # Очищаем временный MP3 файл если он отличается от исходного
             if mp3_file_path != file_path and os.path.exists(mp3_file_path):
                 try:
                     os.unlink(mp3_file_path)
-                    logger.info(f"Cleaned up temporary MP3 file: {mp3_file_path}")
+                    logger.debug(f"🗑️ Удален временный файл: {mp3_file_path}")
                 except OSError as e:
-                    logger.warning(f"Could not clean up temporary file {mp3_file_path}: {e}")
+                    logger.warning(f"Не удалось удалить временный файл {mp3_file_path}: {e}")
 
-            # Формируем результат
-            result = f"Транскрипция аудиофайла '{file_name}':\n\n{transcription_text}"
-
-            return result
+            # ✅ ВОЗВРАЩАЕМ ТОЛЬКО ЧИСТЫЙ ТЕКСТ
+            return transcription_text.strip()
 
         except Exception as e:
-            logger.error(f"Error processing audio file {file_path}: {e}", exc_info=True)
-            return f"Ошибка при обработке аудио файла: {str(e)}"
+            logger.error(f"❌ Ошибка при транскрибации {file_path}: {e}", exc_info=True)
+
+            # Формируем понятное сообщение об ошибке
+            error_type = type(e).__name__
+
+            if "rate limit" in str(e).lower():
+                return "Превышен лимит запросов к API. Попробуйте позже."
+            elif "invalid" in str(e).lower() or "format" in str(e).lower():
+                return "Неподдерживаемый формат аудио. Используйте: MP3, WAV, WEBM, M4A, OGG"
+            elif "timeout" in str(e).lower():
+                return "Время ожидания ответа истекло. Попробуйте записать более короткое аудио."
+            else:
+                return f"Ошибка распознавания речи: {error_type}"
 
     def get_audio_info(self, file_path: str) -> dict:
         """

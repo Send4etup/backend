@@ -98,7 +98,7 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 
 # Константы
 SUPPORTED_IMAGE_TYPES = {
-    'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'
+    'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/heic', 'image/heif'
 }
 SUPPORTED_DOCUMENT_TYPES = {
     'application/pdf', 'application/msword',
@@ -772,14 +772,14 @@ async def send_message_with_files(
 
         if message.strip():
             # Если есть текст - используем его
-            user_message = services.chat_service.send_message(
+            user_message = await services.chat_service.send_message(
                 chat_id, user.user_id, message, "user"
             )
             logger.info(f"✅ Sent user message: {user_message.message_id}")
         elif len(files) > 0:
             # Если только файлы - создаем placeholder сообщение
             auto_message = f"Прикреплено файлов: {len(files)}"
-            user_message = services.chat_service.send_message(
+            user_message = await services.chat_service.send_message(
                 chat_id, user.user_id, auto_message, "user"
             )
             logger.info(f"✅ Sent auto-generated message for files: {user_message.message_id}")
@@ -917,7 +917,7 @@ async def get_ai_response(
                     yield chunk
 
                 # После завершения - сохраняем полный ответ в БД
-                ai_message = services.chat_service.send_message(
+                ai_message = await services.chat_service.send_message(
                     request.chat_id, user.user_id, full_response, "assistant", tokens_count=2
                 )
 
@@ -945,6 +945,216 @@ async def get_ai_response(
             detail=str(e)
         )
 
+
+@app.post("/api/chat/save-partial-response")
+async def save_partial_response(
+        request: dict,  # {"chat_id": str, "content": str}
+        user: User = Depends(get_current_user),
+        services: ServiceContainer = Depends(get_services)
+):
+    """
+    Сохранение частичного ответа ИИ при прерывании генерации
+
+    Этот endpoint вызывается когда пользователь останавливает генерацию,
+    чтобы сохранить то, что успели получить от ИИ
+    """
+    try:
+        chat_id = request.get("chat_id")
+        content = request.get("content", "").strip()
+
+        if not chat_id or not content:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Необходимо указать chat_id и content"
+            )
+
+        # Проверяем доступ к чату
+        chat = services.chat_service.get_chat(chat_id, user.user_id)
+        if not chat:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Доступ к чату запрещен"
+            )
+
+        # Добавляем маркер об обрыве
+        final_content = content + "\n\n[Генерация остановлена]"
+
+        # Сохраняем частичное сообщение
+        # Токены считаем примерно (можно улучшить используя tiktoken)
+        estimated_tokens = len(content.split()) // 2
+
+        ai_message = await services.chat_service.send_message(
+            chat_id=chat_id,
+            user_id=user.user_id,
+            content=final_content,
+            role="assistant",
+            tokens_count=estimated_tokens
+        )
+
+        # Списываем токены за использование
+        services.user_service.use_tokens(user.user_id, estimated_tokens)
+
+        logger.info(
+            f"✅ Saved partial AI response for chat {chat_id}, "
+            f"length: {len(content)} chars, tokens: {estimated_tokens}"
+        )
+
+        return {
+            "success": True,
+            "message_id": ai_message.message_id,
+            "saved_length": len(content),
+            "estimated_tokens": estimated_tokens
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error saving partial response: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Не удалось сохранить частичный ответ"
+        )
+
+
+@app.post("/api/transcribe")
+async def transcribe_audio(
+        audio: UploadFile = File(...),
+        language: str = Form("ru"),
+        prompt: Optional[str] = Form(None)
+):
+    """
+    Транскрибация аудио через Whisper API с улучшенной точностью
+
+    Args:
+        audio: Аудио файл
+        language: Язык аудио (по умолчанию русский)
+        prompt: Контекстный промпт для улучшения точности (опционально)
+
+    Returns:
+        JSON с распознанным текстом или пустой строкой если не удалось распознать
+    """
+    try:
+        logger.info(f"📥 Получен запрос на транскрибацию: {audio.filename}")
+
+        # Сохраняем временный файл
+        temp_dir = Path("temp")
+        temp_dir.mkdir(exist_ok=True)
+
+        temp_path = temp_dir / f"audio_{uuid.uuid4()}.webm"
+
+        with open(temp_path, "wb") as f:
+            content = await audio.read()
+            f.write(content)
+
+        try:
+            # Инициализируем AI сервис
+            ai_service = get_ai_service()
+
+            optimized_prompt = """Транскрибируй речь точно, без добавления авторских комментариев. 
+                Сохраняй только то, что было сказано. Если ничего не слышно или тишина - верни пустую строку. 
+                Используй правильную пунктуацию. Распознавай термины: математика, физика, химия, программирование, 
+                Python, JavaScript, функция, переменная, уравнение, формула, теорема."""
+
+            # Если пользователь передал свой промпт - используем его вместо дефолтного
+            final_prompt = prompt if prompt else optimized_prompt
+
+            # Транскрибируем с улучшенными параметрами
+            transcribed_text = await ai_service.audio_processor.extract_text_from_audio(
+                file_path=str(temp_path),
+                language=language,
+                prompt=final_prompt
+            )
+
+            # ✅ ОЧИСТКА РЕЗУЛЬТАТА
+            # Whisper иногда возвращает результат с префиксом "Транскрипция аудио:"
+            # Удаляем эти технические префиксы
+            if transcribed_text.startswith("Транскрипция аудио"):
+                # Ищем первый перенос строки и берем текст после него
+                lines = transcribed_text.split('\n')
+                if len(lines) > 1:
+                    transcribed_text = '\n'.join(lines[1:]).strip()
+                else:
+                    # Если нет переноса строки, просто удаляем префикс
+                    transcribed_text = transcribed_text.replace("Транскрипция аудио:", "").strip()
+
+            # Удаляем другие возможные префиксы
+            unwanted_prefixes = [
+                "Результат транскрипции:",
+                "Текст:",
+                "Распознано:",
+                "Транскрипция:",
+            ]
+
+            for prefix in unwanted_prefixes:
+                if transcribed_text.startswith(prefix):
+                    transcribed_text = transcribed_text.replace(prefix, "").strip()
+
+            # ✅ ПРОВЕРКА НА ПУСТОЙ РЕЗУЛЬТАТ
+            # Если Whisper не распознал ничего внятного
+            if not transcribed_text or transcribed_text.strip() == "":
+                logger.warning("⚠️ Транскрибация вернула пустой результат")
+                return JSONResponse({
+                    "success": True,
+                    "text": "",  # Пустая строка - сигнал фронтенду что ничего не распознано
+                    "message": "Не удалось распознать речь. Возможно, аудио слишком тихое или содержит только шум."
+                })
+
+            # ✅ ПРОВЕРКА НА ТЕХНИЧЕСКИЙ ТЕКСТ
+            # Whisper иногда возвращает технические сообщения об ошибках
+            error_indicators = [
+                "ошибка при анализ",
+                "не удалось распознать",
+                "аудиофайл слишком",
+                "максимальный размер",
+            ]
+
+            text_lower = transcribed_text.lower()
+            if any(indicator in text_lower for indicator in error_indicators):
+                logger.warning(f"⚠️ Получено техническое сообщение: {transcribed_text[:100]}")
+                return JSONResponse({
+                    "success": False,
+                    "text": "",
+                    "error": transcribed_text
+                })
+
+            logger.info(f"✅ Транскрибация успешна: {len(transcribed_text)} символов")
+            logger.debug(f"Текст: {transcribed_text[:100]}...")
+
+            return JSONResponse({
+                "success": True,
+                "text": transcribed_text.strip()
+            })
+
+        finally:
+            # Удаляем временный файл
+            if temp_path.exists():
+                temp_path.unlink()
+                logger.debug(f"🗑️ Временный файл удален: {temp_path.name}")
+
+    except Exception as e:
+        logger.error(f"❌ Ошибка транскрибации: {e}", exc_info=True)
+
+        # Возвращаем понятную ошибку пользователю
+        error_message = str(e)
+
+        # Определяем тип ошибки для более точного сообщения
+        if "file too large" in error_message.lower():
+            user_message = "Аудиофайл слишком большой. Максимальный размер: 25 МБ"
+        elif "invalid audio" in error_message.lower():
+            user_message = "Неподдерживаемый формат аудио. Используйте: MP3, WAV, WEBM, OGG"
+        elif "api key" in error_message.lower():
+            user_message = "Ошибка конфигурации API. Обратитесь к администратору"
+        else:
+            user_message = "Не удалось распознать речь. Попробуйте записать заново"
+
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "text": "",
+                "error": user_message,
+            }
+        )
 
 # =====================================================
 # ФАЙЛЫ
