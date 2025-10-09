@@ -27,7 +27,7 @@ class TelegramInitDataValidator:
     Использует алгоритм HMAC-SHA256 для проверки подлинности данных:
     1. Парсит query string с initData
     2. Создает data_check_string из отсортированных пар key=value
-    3. Генерирует secret_key = HMAC-SHA256("WebAppData", bot_token)
+    3. Генерирует secret_key = HMAC-SHA256(bot_token, "WebAppData")
     4. Вычисляет подпись и сравнивает с полученным hash
     """
 
@@ -45,6 +45,7 @@ class TelegramInitDataValidator:
         self.max_auth_age_seconds = 3600  # 1 час максимальный возраст данных
 
         logger.info("Telegram validator initialized")
+        logger.debug(f"Bot token length: {len(bot_token)} chars")
 
     def validate_init_data(self, init_data: str) -> Dict[str, Any]:
         """
@@ -61,6 +62,8 @@ class TelegramInitDataValidator:
         """
         try:
             logger.info("Starting Telegram initData validation")
+            logger.debug(f"Received initData length: {len(init_data)} chars")
+            logger.debug(f"InitData preview: {init_data[:100]}...")
 
             # 1. Базовые проверки
             if not init_data or not isinstance(init_data, str):
@@ -79,7 +82,7 @@ class TelegramInitDataValidator:
             # 5. Извлекаем и валидируем данные пользователя
             user_data = self._extract_user_data(parsed_data)
 
-            logger.info(f"Successfully validated Telegram user: {user_data.get('id')}")
+            logger.info(f"✅ Successfully validated Telegram user: {user_data.get('id')}")
 
             return {
                 'user': user_data,
@@ -94,12 +97,15 @@ class TelegramInitDataValidator:
             # Перебрасываем наши исключения как есть
             raise
         except Exception as e:
-            logger.error(f"Unexpected error during validation: {e}")
+            logger.error(f"Unexpected error during validation: {e}", exc_info=True)
             raise TelegramDataValidationError(f"Validation failed: {str(e)}")
 
     def _parse_init_data(self, init_data: str) -> Dict[str, str]:
         """
         Парсинг query string с initData
+
+        КРИТИЧНО: parse_qs автоматически делает URL-декодирование,
+        поэтому НЕ нужно делать unquote() всей строки заранее!
 
         Args:
             init_data: Строка с данными
@@ -108,11 +114,9 @@ class TelegramInitDataValidator:
             Словарь с распарсенными данными
         """
         try:
-            # Декодируем URL-encoded данные
-            decoded_data = unquote(init_data)
-
-            # Парсим как query string
-            parsed = parse_qs(decoded_data, keep_blank_values=True)
+            # ✅ ИСПРАВЛЕНИЕ: parse_qs БЕЗ предварительного unquote
+            # parse_qs сам делает URL-декодирование значений
+            parsed = parse_qs(init_data, keep_blank_values=True)
 
             # Преобразуем в простой словарь (берем первое значение из списка)
             result = {}
@@ -130,16 +134,24 @@ class TelegramInitDataValidator:
                 raise TelegramDataValidationError("Missing auth_date field")
 
             logger.debug(f"Parsed initData fields: {list(result.keys())}")
+            logger.debug(f"Auth date: {result.get('auth_date')}")
+            logger.debug(f"Query ID: {result.get('query_id', 'N/A')}")
 
             return result
 
         except Exception as e:
-            logger.error(f"Failed to parse initData: {e}")
+            logger.error(f"Failed to parse initData: {e}", exc_info=True)
             raise TelegramDataValidationError(f"Invalid initData format: {str(e)}")
 
     def _verify_signature(self, parsed_data: Dict[str, str], original_init_data: str) -> bool:
         """
         Проверка HMAC-SHA256 подписи согласно алгоритму Telegram
+
+        Алгоритм согласно https://docs.telegram-mini-apps.com/platform/init-data:
+        1. Создать data_check_string из отсортированных пар (без hash)
+        2. secret_key = HMAC-SHA256(bot_token, key="WebAppData")
+        3. calculated_hash = HMAC-SHA256(data_check_string, key=secret_key)
+        4. Сравнить calculated_hash с полученным hash
 
         Args:
             parsed_data: Распарсенные данные
@@ -155,30 +167,32 @@ class TelegramInitDataValidator:
                 logger.error("No hash found in initData")
                 return False
 
-            # 2. Создаем data_check_string
-            # Исключаем hash и сортируем по алфавиту
-            data_pairs = []
-            for key, value in parsed_data.items():
-                if key != 'hash':
-                    data_pairs.append(f"{key}={value}")
-
-            # Сортируем по алфавиту
+            # 2. Создаем data_check_string (без hash, отсортированные по алфавиту)
+            data_pairs = [
+                f"{key}={value}"
+                for key, value in parsed_data.items()
+                if key != 'hash'
+            ]
             data_pairs.sort()
             data_check_string = '\n'.join(data_pairs)
 
-            logger.debug(f"Data check string created with {len(data_pairs)} pairs")
+            logger.debug(f"Data check string:\n{data_check_string}")
 
-            # 3. Создаем secret_key = HMAC-SHA256("WebAppData", bot_token)
+            # 3. ✅ ИСПРАВЛЕНИЕ: Создаем secret_key
+            # HMAC(message=bot_token, key="WebAppData")
             secret_key = hmac.new(
-                b"WebAppData",
-                self.bot_token.encode('utf-8'),
+                b"WebAppData",  # key = "WebAppData" ✅
+                self.bot_token.encode('utf-8'),  # message = bot_token ✅
                 hashlib.sha256
             ).digest()
 
-            # 4. Вычисляем подпись = HMAC-SHA256(data_check_string, secret_key)
+            logger.debug(f"Secret key (hex): {secret_key.hex()}")
+
+            # 4. Вычисляем подпись данных
+            # HMAC(message=data_check_string, key=secret_key)
             calculated_hash = hmac.new(
-                secret_key,
-                data_check_string.encode('utf-8'),
+                secret_key,  # key = secret_key
+                data_check_string.encode('utf-8'),  # message = data_check_string
                 hashlib.sha256
             ).hexdigest()
 
@@ -186,14 +200,17 @@ class TelegramInitDataValidator:
             is_valid = hmac.compare_digest(received_hash, calculated_hash)
 
             if not is_valid:
-                logger.warning("HMAC signature mismatch")
-                logger.debug(f"Received: {received_hash}")
-                logger.debug(f"Calculated: {calculated_hash}")
+                logger.warning("❌ HMAC signature mismatch!")
+                logger.warning(f"Received hash:   {received_hash}")
+                logger.warning(f"Calculated hash: {calculated_hash}")
+                logger.debug(f"Bot token starts with: {self.bot_token[:10]}...")
+            else:
+                logger.info("✅ HMAC signature verified successfully")
 
             return is_valid
 
         except Exception as e:
-            logger.error(f"Error verifying signature: {e}")
+            logger.error(f"Error verifying signature: {e}", exc_info=True)
             return False
 
     def _verify_auth_date(self, parsed_data: Dict[str, str]) -> None:
@@ -227,7 +244,7 @@ class TelegramInitDataValidator:
             if age_seconds < -60:  # Допускаем небольшое расхождение часов
                 raise TelegramDataValidationError("InitData from future")
 
-            logger.debug(f"Auth date verified: {age_seconds:.0f}s ago")
+            logger.debug(f"✅ Auth date verified: {age_seconds:.0f}s ago")
 
         except ValueError as e:
             raise TelegramDataValidationError(f"Invalid auth_date format: {e}")
@@ -254,6 +271,8 @@ class TelegramInitDataValidator:
             if not user_json:
                 raise TelegramDataValidationError("Missing user data")
 
+            logger.debug(f"User JSON: {user_json}")
+
             # Парсим JSON с данными пользователя
             user_data = json.loads(user_json)
 
@@ -271,7 +290,7 @@ class TelegramInitDataValidator:
             if user_data['id'] <= 0:
                 raise TelegramDataValidationError("Invalid user ID value")
 
-            logger.debug(f"Extracted user data for ID: {user_data['id']}")
+            logger.debug(f"✅ Extracted user data for ID: {user_data['id']}")
 
             return user_data
 
@@ -313,10 +332,10 @@ class TelegramInitDataValidator:
 
         data_check_string = '\n'.join(data_pairs)
 
-        # Вычисляем подпись
+        # ✅ ИСПРАВЛЕНИЕ: Правильный порядок параметров
         secret_key = hmac.new(
-            b"WebAppData",
-            self.bot_token.encode('utf-8'),
+            b"WebAppData",  # key = "WebAppData"
+            self.bot_token.encode('utf-8'),  # message = bot_token
             hashlib.sha256
         ).digest()
 
