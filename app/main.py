@@ -127,14 +127,6 @@ class TelegramAuthRequest(BaseModel):
     """
     init_data: str  # Полные данные от window.Telegram.WebApp.initData
 
-    class Config:
-        # Пример валидного init_data для документации
-        schema_extra = {
-            "example": {
-                "init_data": "query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A279058397%2C%22first_name%22%3A%22Test%22%7D&auth_date=1662771648&hash=c501b71e775f74ce10e377dea85a7ea24ecd640b223ea86dfe453e0eaed2e2b2"
-            }
-        }
-
 class CreateChatRequest(BaseModel):
     title: str
     chat_type: Optional[str] = "general"
@@ -788,7 +780,6 @@ async def send_message_with_files(
             )
             logger.info(f"✅ Sent auto-generated message for files: {user_message.message_id}")
 
-        # ✅ 2. ТЕПЕРЬ загружаем файлы (user_message уже существует)
         uploaded_files = []
         file_errors = []
 
@@ -808,7 +799,6 @@ async def send_message_with_files(
 
                 await file.seek(0)
 
-                # ✅ Теперь user_message.message_id точно существует
                 file_data = await save_uploaded_file(
                     file, user, services, user_message.message_id
                 )
