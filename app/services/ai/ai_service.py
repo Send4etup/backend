@@ -51,9 +51,11 @@ class AIService:
     async def get_response_stream(
             self,
             message: str,
-            context: Dict[str, Any] = None,
+            context: str = 'general',
             chat_history: List[Dict[str, Any]] = None,
             files_context: str = '',
+            temperature: float = 0.7,
+            agent_prompt: str = None,
     ) -> AsyncIterator[str]:
         """
         Получить потоковый ответ от GPT
@@ -63,6 +65,8 @@ class AIService:
             context: Контекст (tool_type и т.д.)
             chat_history: История чата
             files_context: Извлеченный текст из файлов
+            temperature: float
+            agent_prompt: str
 
         Yields:
             Части ответа (chunks)
@@ -71,18 +75,22 @@ class AIService:
 
         async for chunk in self.response_handler.get_response_stream(
                 message=message,
-                context=context or {},
+                context=context,
                 chat_history=chat_history or [],
-                files_context=files_context
+                files_context=files_context,
+                temperature=temperature,
+                agent_prompt=agent_prompt,
         ):
             yield chunk
 
     async def get_response(
             self,
             message: str,
-            context: Dict[str, Any] = None,
+            context: str = 'general',
             chat_history: List[Dict[str, Any]] = None,
-            files_context: str = ''
+            files_context: str = '',
+            temperature: float = 0.7,
+            agent_prompt: str = None,
     ) -> str:
         """
         Получить полный ответ от GPT (не потоковый)
@@ -92,7 +100,8 @@ class AIService:
             context: Контекст
             chat_history: История чата
             files_context: Извлеченный текст из файлов
-
+            temperature: float
+            agent_prompt: str
         Returns:
             Полный ответ от GPT
         """
@@ -100,9 +109,11 @@ class AIService:
 
         return await self.response_handler.get_single_response(
             message=message,
-            context=context or {},
+            context=context,
             chat_history=chat_history or [],
-            files_context=files_context
+            files_context=files_context,
+            temperature=temperature,
+            agent_prompt=agent_prompt,
         )
 
     # ==================== МЕТОДЫ ДЛЯ РАБОТЫ С ИЗОБРАЖЕНИЯМИ ====================

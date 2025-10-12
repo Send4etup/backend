@@ -35,7 +35,6 @@ class ResponseHandler:
 
         # Параметры генерации
         self.generation_params = {
-            'temperature': 0.7,
             'presence_penalty': 0.1,
             'frequency_penalty': 0.1
         }
@@ -43,10 +42,12 @@ class ResponseHandler:
     async def get_response_stream(
             self,
             message: str,
-            context: Dict[str, Any] = None,
+            context: str,
             chat_history: List[Dict[str, Any]] = None,
             files_context: str = '',
-            max_tokens: Optional[int] = None
+            max_tokens: Optional[int] = None,
+            temperature: float = 0.7,
+            agent_prompt: str = None,
     ) -> AsyncIterator[str]:
         """
         Получить потоковый ответ от GPT с учетом файлов и истории
@@ -57,12 +58,12 @@ class ResponseHandler:
             chat_history: История чата
             files_context: Контекст из файлов
             max_tokens: Максимальное количество токенов
-
+            temperature: float
+            agent_prompt: str
         Yields:
             Части ответа (chunks)
         """
         try:
-            context = context or {}
             chat_history = chat_history or []
 
             logger.info(
@@ -72,13 +73,21 @@ class ResponseHandler:
             )
 
             # Получаем системный промпт
-            tool_type = context.get('tool_type', 'default')
-            system_prompt = get_system_prompt(tool_type)
+            tool_type = context
+            base_prompt = get_system_prompt(tool_type)
+
+            if agent_prompt:
+                system_prompt = base_prompt + "\n\n" + agent_prompt
+                logger.info(f"AI prompt: '{agent_prompt}'")
+
+            else:
+                system_prompt = base_prompt
 
             # Формируем сообщения для GPT
             messages = [
                 {"role": "system", "content": system_prompt}
             ]
+
 
             # Добавляем историю чата
             if chat_history:
@@ -153,6 +162,7 @@ class ResponseHandler:
                 messages=messages,
                 max_tokens=max_tokens or self.default_max_tokens,
                 stream=True,
+                temperature=temperature,
                 **self.generation_params
             )
 
@@ -180,7 +190,7 @@ class ResponseHandler:
             # Fallback ответ
             fallback_response = self._get_fallback_response(
                 message,
-                context.get('tool_type', 'default') if context else 'default',
+                context,
                 bool(files_context)
             )
 
@@ -461,10 +471,12 @@ class ResponseHandler:
     async def get_single_response(
             self,
             message: str,
-            context: Dict[str, Any] = None,
+            context: str,
             chat_history: List[Dict[str, Any]] = None,
             files_context: str = '',
-            max_tokens: Optional[int] = None
+            max_tokens: Optional[int] = None,
+            temperature: float = 0.7,
+            agent_prompt: str = None,
     ) -> str:
         """
         Получить полный ответ (не потоковый) от GPT
@@ -475,7 +487,8 @@ class ResponseHandler:
             chat_history: История чата
             files_context: Контекст из файлов
             max_tokens: Максимальное количество токенов
-
+            temperature: float,
+            agent_prompt: str,
         Returns:
             Полный ответ от GPT
         """
@@ -488,7 +501,9 @@ class ResponseHandler:
                     context,
                     chat_history,
                     files_context,
-                    max_tokens
+                    max_tokens,
+                    temperature,
+                    agent_prompt,
             ):
                 full_response += chunk
 
@@ -500,7 +515,7 @@ class ResponseHandler:
             # Fallback на резервный ответ
             return self._get_fallback_response(
                 message,
-                context.get('tool_type', 'default') if context else 'default',
+                context,
                 bool(files_context)
             )
 

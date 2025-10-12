@@ -145,11 +145,15 @@ class SendMessageRequest(BaseModel):
     message: str
     tool_type: Optional[str] = None
 
+class ChatContext(BaseModel):
+    tool_type: str = 'general'
+    agent_prompt: Optional[str] = None
+    temperature: float = 0.7
 
 class AIResponseRequest(BaseModel):
     message: str
     chat_id: Optional[str] = None
-    context: Optional[Dict[str, Any]] = {}
+    context: ChatContext
     file_ids: Optional[List[str]] = None
 
 
@@ -882,6 +886,9 @@ async def get_ai_response(
                 detail="Chat ID is required"
             )
 
+        temperature = request.context.temperature
+        agent_prompt = request.context.agent_prompt
+
         # Получаем контекст чата
         chat_history = services.chat_service.get_chat_for_ai_context(request.chat_id, user.user_id, 20)
         logger.info(f"Chat history length: {len(chat_history)}")
@@ -909,9 +916,11 @@ async def get_ai_response(
                 # Используем существующий get_response_stream
                 async for chunk in ai_service.get_response_stream(
                         request.message,
-                        request.context,
+                        request.context.tool_type,
                         chat_history,
                         files_context,
+                        temperature,
+                        agent_prompt,
                 ):
                     full_response += chunk
                     yield chunk
