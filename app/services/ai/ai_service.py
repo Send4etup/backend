@@ -8,6 +8,8 @@ import os
 import logging
 from typing import Dict, Any, List, Optional, AsyncIterator
 from openai import AsyncOpenAI
+from pydantic import BaseModel, Field
+from pyexpat.errors import messages
 
 from .prompts import get_system_prompt, TOOL_METADATA
 from .image_processor import ImageProcessor
@@ -17,6 +19,12 @@ from .response_handler import ResponseHandler
 
 logger = logging.getLogger(__name__)
 
+class ImageGenerationResponse(BaseModel):
+    """Модель ответа со сгенерированным изображением"""
+    success: bool
+    image_url: Optional[str] = None
+    revised_prompt: Optional[str] = None
+    error: Optional[str] = None
 
 class AIService:
     """Главный класс для работы с AI функциональностью"""
@@ -115,6 +123,184 @@ class AIService:
             temperature=temperature,
             agent_prompt=agent_prompt,
         )
+
+    async def generate_image(
+            self,
+            message: str,
+            chat_history: List[Dict[str, Any]] = None,
+            n: int = 1,
+            agent_prompt: str = None,
+            files_context: str = '',
+    ):
+        """
+        Генерация изображения через DALL-E API
+
+        Args:
+            request: Параметры для генерации изображения
+
+        Returns:
+            URL сгенерированного изображения или ошибка
+            :param files_context:
+            :param message:
+            :param agent_prompt:
+            :param chat_history:
+            :param n:
+        """
+        try:
+
+            chat_history = chat_history or []
+
+            if agent_prompt:
+                system_prompt = message + "\n\n" + agent_prompt
+                params = self.detect_image_params(agent_prompt)
+                logger.info(f"AI params: {params}")
+
+            else:
+                system_prompt = message
+
+            # Добавляем историю чата
+            if chat_history:
+                system_prompt += "\n\nИстория чата:\n\n"
+                logger.info(f"Adding {len(chat_history[-10:])} messages from chat history")
+
+                # Берем последние 15 сообщений для контекста
+                recent_history = chat_history[-10:]
+
+                for msg in recent_history:
+
+                    role = msg.get("role")
+                    content = msg.get("content", "")
+
+                    if role != "user" or not content:
+                        continue
+
+                    # Обрабатываем файлы из истории
+                    if msg.get("files") and role == "user":
+                        file_texts = []
+                        file_names = []
+
+                        for file_data in msg["files"]:
+                            file_name = file_data.get("original_name", "файл")
+                            file_names.append(file_name)
+
+                            # Извлекаем текст если есть
+                            extracted = file_data.get("extracted_text")
+                            if extracted and extracted.strip() and extracted != "None":
+                                file_texts.append(
+                                    f"\n--- Содержимое файла '{file_name}' ---\n"
+                                    f"{extracted}\n"
+                                    f"--- Конец файла ---\n"
+                                )
+
+                        # Формируем content с текстами файлов
+                        if file_texts:
+                            content = f"{content}\n\n{''.join(file_texts)}"
+                        elif file_names:
+                            file_info = ", ".join(file_names)
+                            content = f"{content}\n[Прикреплены файлы: {file_info}]"
+
+                    system_prompt += content + "\n\n"
+
+                logger.info(f"Added {len(recent_history)} history messages to context")
+
+            # Подготавливаем текущее сообщение с контекстом файлов
+            # if files_context:
+            #     logger.info("Preparing current message with files context")
+            #     message_content = (
+            #         f"Текст от пользователя:\n{message}\n\n"
+            #         f"Извлеченный текст из файлов:\n{files_context}"
+            #     )
+            # else:
+            #     message_content = message
+
+
+            logger.info(f"Prompt: {message[200:]}")
+
+            # Генерация изображения через DALL-E 3
+            response = await self.client.images.generate(
+                model="dall-e-3",  # Используем DALL-E 3 для лучшего качества
+                prompt=message,
+                n=n,
+                size=params.get("aspectRatio", "1024x1024"),
+                quality=params.get("quality", "standard"),
+                style=params.get("style", "natural"),
+            )
+
+            if response.data and len(response.data) > 0:
+                image_data = response.data[0]
+                logger.info("Image generated successfully")
+
+                return ImageGenerationResponse(
+                    success=True,
+                    image_url=image_data.url,
+                    revised_prompt=getattr(image_data, 'revised_prompt', None)
+                )
+            else:
+                logger.error("No image data received from DALL-E")
+                return ImageGenerationResponse(
+                    success=False,
+                    error="Не удалось получить изображение от DALL-E"
+                )
+
+        except Exception as e:
+            logger.error(f"Error generating image: {str(e)}", exc_info=True)
+
+            # Обработка специфичных ошибок OpenAI
+            error_message = str(e)
+
+            if "billing" in error_message.lower() or "quota" in error_message.lower():
+                error_message = "Превышен лимит API. Проверьте баланс OpenAI аккаунта."
+            elif "content_policy" in error_message.lower():
+                error_message = "Промпт нарушает политику контента. Попробуйте изменить описание."
+            elif "rate_limit" in error_message.lower():
+                error_message = "Слишком много запросов. Попробуйте через несколько секунд."
+            else:
+                error_message = f"Ошибка генерации: {error_message[:100]}"
+
+            return ImageGenerationResponse(
+                success=False,
+                error=error_message
+            )
+
+    def detect_image_params(self, user_prompt: str) -> dict:
+        prompt = user_prompt.lower()
+        params = {}
+
+        # Стиль изображения
+        if any(word in prompt for word in ["realistic", "фотореалистично", "фото"]):
+            params["imageStyle"] = "natural"
+        elif "anime" in prompt:
+            params["imageStyle"] = "vivid"
+        elif any(word in prompt for word in ["мультяшно", "cartoon"]):
+            params["imageStyle"] = "vivid"
+        elif "abstract" in prompt:
+            params["imageStyle"] = "vivid"
+        elif "artistic" in prompt:
+            params["imageStyle"] = "vivid"
+
+        # Соотношение сторон
+        if any(word in prompt for word in ["landscape", "широкий"]):
+            params["size"] = "1024x768"
+        elif "portrait" in prompt:
+            params["size"] = "768x1024"
+        elif any(word in prompt for word in ["квадрат", "square"]):
+            params["size"] = "1024x1024"
+
+        # Качество
+        if "высокое качество" in prompt or "hd" in prompt:
+            params["quality"] = "hd"
+        else:
+            params["quality"] = "standard"
+
+        # Детализация
+        if any(word in prompt for word in ["detailed", "детально", "детализация"]):
+            params["detailLevel"] = "detailed"
+        elif any(word in prompt for word in ["simple", "простая"]):
+            params["detailLevel"] = "simple"
+        else:
+            params["detailLevel"] = "medium"
+
+        return params
 
     # ==================== МЕТОДЫ ДЛЯ РАБОТЫ С ИЗОБРАЖЕНИЯМИ ====================
 

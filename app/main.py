@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException, Depends, status, File, UploadFile, F
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse, JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 import uuid
 import os
@@ -192,6 +192,19 @@ class FileResponse(BaseModel):
     icon: str
     uploaded_at: str
 
+# class ImageGenerationRequest(BaseModel):
+#     prompt: str = Field(..., min_length=1, max_length=4000)
+#     size: str = Field(default="1024x1024", pattern="^(1024x1024|1792x1024|1024x1792)$")
+#     quality: str = Field(default="standard", pattern="^(standard|hd)$")
+#     style: str = Field(default="vivid", pattern="^(vivid|natural)$")
+#     n: int = Field(default=1, ge=1, le=1)
+#
+# class ImageGenerationResponse(BaseModel):
+#     """Модель ответа со сгенерированным изображением"""
+#     success: bool
+#     image_url: Optional[str] = None
+#     revised_prompt: Optional[str] = None
+#     error: Optional[str] = None
 
 # =====================================================
 # АУТЕНТИФИКАЦИЯ
@@ -897,35 +910,70 @@ async def get_ai_response(
                 detail="AI service is not available"
             )
 
+        chat_info = services.chat_service.get_chat(request.chat_id, user.user_id)
+
         # Функция-генератор для streaming
         async def generate_response():
             full_response = ""
 
-            try:
-                logger.info(f"Generating response for user {user.user_id}")
-                # Используем существующий get_response_stream
-                async for chunk in ai_service.get_response_stream(
+            if chat_info.type != 'image':
+                try:
+                    logger.info(f"Generating response for user {user.user_id}")
+                    # Используем существующий get_response_stream
+                    async for chunk in ai_service.get_response_stream(
                         request.message,
                         request.context.tool_type,
                         chat_history,
                         files_context,
                         temperature,
                         agent_prompt,
-                ):
-                    full_response += chunk
-                    yield chunk
+                    ):
+                        full_response += chunk
+                        yield chunk
 
-                # После завершения - сохраняем полный ответ в БД
-                ai_message = await services.chat_service.send_message(
-                    request.chat_id, user.user_id, full_response, "assistant", tokens_count=2
-                )
+                    # После завершения - сохраняем полный ответ в БД
+                    ai_message = await services.chat_service.send_message(
+                        request.chat_id, user.user_id, full_response, "assistant", tokens_count=2
+                    )
 
-                # Списываем токены
-                services.user_service.use_tokens(user.user_id, 2)
+                    # Списываем токены
+                    services.user_service.use_tokens(user.user_id, 2)
 
-            except Exception as e:
-                logger.error(f"Streaming error: {e}")
-                yield f"\n\nОшибка: {str(e)}"
+                except Exception as e:
+                    logger.error(f"Streaming error: {e}")
+                    yield f"\n\nОшибка: {str(e)}"
+            else:
+                try:
+                    result = await ai_service.generate_image(
+                        request.message,
+                        chat_history,
+                        1,
+                        agent_prompt,
+                        files_context,
+                    )
+
+                    if result.success:
+                        image_url = result.image_url
+                        full_response = f"Изображение успешно создано: {image_url}"
+                    else:
+                        full_response = f"Ошибка при генерации изображения: {result.error}"
+
+                    # Отправляем сообщение в БД
+                    ai_message = await services.chat_service.send_message(
+                        request.chat_id, user.user_id, full_response, "assistant", tokens_count=2
+                    )
+
+                    # Списываем токены
+                    services.user_service.use_tokens(user.user_id, 5)
+
+                    logger.info(f"Image response: {full_response}")
+
+                    # Возвращаем ответ пользователю (стрим или окончательный результат)
+                    yield full_response
+
+                except Exception as e:
+                    logger.error(f"Streaming error: {e}")
+                    yield f"\n\nОшибка: {str(e)}"
 
         # Возвращаем StreamingResponse
         return StreamingResponse(
