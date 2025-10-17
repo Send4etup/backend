@@ -102,3 +102,4 @@ tenacity==8.2.3
 PyJWT==2.8.0
 
 fastapi-csrf-protect==0.3.4
+requests

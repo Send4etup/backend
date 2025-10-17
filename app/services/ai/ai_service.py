@@ -136,38 +136,39 @@ class AIService:
         Генерация изображения через DALL-E API
 
         Args:
-            request: Параметры для генерации изображения
+            message: Промпт пользователя для генерации
+            chat_history: История чата для контекста
+            n: Количество изображений (всегда 1 для DALL-E 3)
+            agent_prompt: Системный промпт агента
+            files_context: Контекст из прикрепленных файлов
 
         Returns:
-            URL сгенерированного изображения или ошибка
-            :param files_context:
-            :param message:
-            :param agent_prompt:
-            :param chat_history:
-            :param n:
+            ImageGenerationResponse с URL изображения или ошибкой
         """
         try:
-
             chat_history = chat_history or []
 
+            system_prompt = message
+            params = {}  # Дефолтные параметры
+
+            # Если есть agent_prompt - извлекаем из него параметры
             if agent_prompt:
                 system_prompt = message + "\n\n" + agent_prompt
                 params = self.detect_image_params(agent_prompt)
-                logger.info(f"AI params: {params}")
-
+                logger.info(f"🎨 AI params from agent_prompt: {params}")
             else:
-                system_prompt = message
+                # Если промпта нет - пытаемся извлечь из сообщения
+                params = self.detect_image_params(message)
 
-            # Добавляем историю чата
             if chat_history:
-                system_prompt += "\n\nИстория чата:\n\n"
-                logger.info(f"Adding {len(chat_history[-10:])} messages from chat history")
+                logger.info(f"📜 Adding {len(chat_history[-10:])} messages from chat history")
 
-                # Берем последние 15 сообщений для контекста
+                # Берем последние 10 сообщений для контекста
                 recent_history = chat_history[-10:]
 
-                for msg in recent_history:
+                context_text = "\n\nКонтекст из истории чата:\n\n"
 
+                for msg in recent_history:
                     role = msg.get("role")
                     content = msg.get("content", "")
 
@@ -199,36 +200,46 @@ class AIService:
                             file_info = ", ".join(file_names)
                             content = f"{content}\n[Прикреплены файлы: {file_info}]"
 
-                    system_prompt += content + "\n\n"
+                    context_text += content + "\n\n"
 
-                logger.info(f"Added {len(recent_history)} history messages to context")
+                # Добавляем контекст к промпту
+                system_prompt = message + context_text
 
-            # Подготавливаем текущее сообщение с контекстом файлов
-            # if files_context:
-            #     logger.info("Preparing current message with files context")
-            #     message_content = (
-            #         f"Текст от пользователя:\n{message}\n\n"
-            #         f"Извлеченный текст из файлов:\n{files_context}"
-            #     )
-            # else:
-            #     message_content = message
+                logger.info(f"✅ Added {len(recent_history)} history messages to context")
 
+            # DALL-E 3 принимает только эти размеры
+            valid_sizes = ["1024x1024", "1792x1024", "1024x1792"]
+            size = params.get("aspectRatio", "1024x1024")
 
-            logger.info(f"Prompt: {message[200:]}")
+            if size not in valid_sizes:
+                logger.warning(f"⚠️ Invalid size {size}, using default 1024x1024")
+                size = "1024x1024"
 
-            # Генерация изображения через DALL-E 3
+            quality = params.get("quality", "standard")
+            if quality not in ["standard", "hd"]:
+                quality = "standard"
+
+            style = params.get("style", "vivid")
+            if style not in ["vivid", "natural"]:
+                style = "vivid"
+
+            logger.info(f"🎨 Final DALL-E params: size={size}, quality={quality}, style={style}")
+            logger.info(f"📝 Prompt length: {len(message)} characters")
+
             response = await self.client.images.generate(
-                model="dall-e-3",  # Используем DALL-E 3 для лучшего качества
-                prompt=message,
-                n=n,
-                size=params.get("aspectRatio", "1024x1024"),
-                quality=params.get("quality", "standard"),
-                style=params.get("style", "natural"),
+                model="dall-e-3",  # DALL-E 3 для лучшего качества
+                prompt=system_prompt,
+                n=1,  # DALL-E 3 поддерживает только n=1
+                size=size,
+                quality=quality,
+                style=style,
             )
+
+
 
             if response.data and len(response.data) > 0:
                 image_data = response.data[0]
-                logger.info("Image generated successfully")
+                logger.info("✅ Image generated successfully")
 
                 return ImageGenerationResponse(
                     success=True,
@@ -236,16 +247,15 @@ class AIService:
                     revised_prompt=getattr(image_data, 'revised_prompt', None)
                 )
             else:
-                logger.error("No image data received from DALL-E")
+                logger.error("❌ No image data received from DALL-E")
                 return ImageGenerationResponse(
                     success=False,
                     error="Не удалось получить изображение от DALL-E"
                 )
 
         except Exception as e:
-            logger.error(f"Error generating image: {str(e)}", exc_info=True)
+            logger.error(f"❌ Error generating image: {str(e)}", exc_info=True)
 
-            # Обработка специфичных ошибок OpenAI
             error_message = str(e)
 
             if "billing" in error_message.lower() or "quota" in error_message.lower():
@@ -263,42 +273,52 @@ class AIService:
             )
 
     def detect_image_params(self, user_prompt: str) -> dict:
+        """
+        Определение параметров генерации изображения из промпта пользователя
+
+        Args:
+            user_prompt: Промпт от пользователя (может содержать настройки)
+
+        Returns:
+            dict: Параметры для DALL-E API
+        """
         prompt = user_prompt.lower()
         params = {}
 
-        # Стиль изображения
-        if any(word in prompt for word in ["realistic", "фотореалистично", "фото"]):
-            params["imageStyle"] = "natural"
-        elif "anime" in prompt:
-            params["imageStyle"] = "vivid"
-        elif any(word in prompt for word in ["мультяшно", "cartoon"]):
-            params["imageStyle"] = "vivid"
-        elif "abstract" in prompt:
-            params["imageStyle"] = "vivid"
-        elif "artistic" in prompt:
-            params["imageStyle"] = "vivid"
+        # ✅ Стиль изображения (style parameter для DALL-E 3)
+        if any(word in prompt for word in ["realistic", "фотореалистично", "фото", "реалистичный"]):
+            params["style"] = "natural"
+        elif any(word in prompt for word in ["anime", "мультяшно", "cartoon", "artistic", "vivid"]):
+            params["style"] = "vivid"
+        else:
+            params["style"] = "vivid"  # По умолчанию более креативный стиль
 
-        # Соотношение сторон
-        if any(word in prompt for word in ["landscape", "широкий"]):
-            params["size"] = "1024x768"
-        elif "portrait" in prompt:
-            params["size"] = "768x1024"
-        elif any(word in prompt for word in ["квадрат", "square"]):
-            params["size"] = "1024x1024"
+        # ✅ Соотношение сторон (size parameter для DALL-E 3)
+        # DALL-E 3 поддерживает только: 1024x1024, 1792x1024, 1024x1792
+        if any(word in prompt for word in ["landscape", "широкий", "горизонтальный", "panorama"]):
+            params["aspectRatio"] = "1792x1024"  # Горизонтальный
+        elif any(word in prompt for word in ["portrait", "вертикальный", "портрет", "tall"]):
+            params["aspectRatio"] = "1024x1792"  # Вертикальный
+        elif any(word in prompt for word in ["квадрат", "square", "квадратный"]):
+            params["aspectRatio"] = "1024x1024"  # Квадратный
+        else:
+            params["aspectRatio"] = "1024x1024"  # По умолчанию квадрат
 
-        # Качество
-        if "высокое качество" in prompt or "hd" in prompt:
+        # ✅ Качество (quality parameter для DALL-E 3)
+        if any(word in prompt for word in ["высокое качество", "hd", "high quality", "detailed"]):
             params["quality"] = "hd"
         else:
             params["quality"] = "standard"
 
-        # Детализация
+        # ℹ️ Уровень детализации (используется только для промпта, не API параметр)
         if any(word in prompt for word in ["detailed", "детально", "детализация"]):
             params["detailLevel"] = "detailed"
         elif any(word in prompt for word in ["simple", "простая"]):
             params["detailLevel"] = "simple"
         else:
             params["detailLevel"] = "medium"
+
+        logger.info(f"🎨 Detected image params: {params}")
 
         return params
 

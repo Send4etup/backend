@@ -15,6 +15,7 @@ from datetime import datetime
 import logging
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
+import requests
 
 from app.auth import JWT_EXPIRATION_HOURS, JWTManager
 # Импорты наших модулей
@@ -159,7 +160,6 @@ class UserProfileResponse(BaseModel):
     created_at: str
     last_activity: str
 
-
 class ChatResponse(BaseModel):
     chat_id: str
     title: str
@@ -192,19 +192,62 @@ class FileResponse(BaseModel):
     icon: str
     uploaded_at: str
 
-# class ImageGenerationRequest(BaseModel):
-#     prompt: str = Field(..., min_length=1, max_length=4000)
-#     size: str = Field(default="1024x1024", pattern="^(1024x1024|1792x1024|1024x1792)$")
-#     quality: str = Field(default="standard", pattern="^(standard|hd)$")
-#     style: str = Field(default="vivid", pattern="^(vivid|natural)$")
-#     n: int = Field(default=1, ge=1, le=1)
-#
-# class ImageGenerationResponse(BaseModel):
-#     """Модель ответа со сгенерированным изображением"""
-#     success: bool
-#     image_url: Optional[str] = None
-#     revised_prompt: Optional[str] = None
-#     error: Optional[str] = None
+class ImageGenerationRequest(BaseModel):
+    """
+    Запрос на генерацию изображения через DALL-E
+    """
+    chat_id: str = Field(..., description="ID чата")
+    message: str = Field(..., description="Текстовый промпт для генерации")
+    agent_prompt: Optional[str] = Field(None, description="Системный промпт агента")
+    context: Optional[Dict[str, Any]] = Field(
+        default_factory=dict,
+        description="Дополнительный контекст (tool_type, temperature)"
+    )
+    file_ids: Optional[List[str]] = Field(
+        default_factory=list,
+        description="Массив ID файлов для анализа (опционально)"
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "chat_id": "chat_123abc",
+                "message": "создай в стиле аниме",
+                "agent_prompt": "Ты помощник для создания изображений",
+                "context": {
+                    "tool_type": "images",
+                    "temperature": 0.7
+                },
+                "file_ids": ["file_abc123", "file_xyz789"]
+            }
+        }
+
+
+class ImageGenerationResponse(BaseModel):
+    """
+    Ответ при генерации изображения
+    """
+    success: bool = Field(..., description="Успешность генерации")
+    image_url: Optional[str] = Field(None, description="URL сгенерированного изображения")
+    revised_prompt: Optional[str] = Field(None, description="Улучшенный промпт от DALL-E")
+    analysis: Optional[str] = Field(None, description="Анализ загруженных изображений")
+    message: str = Field(..., description="Сообщение для пользователя")
+    error: Optional[str] = Field(None, description="Описание ошибки если есть")
+    message_id: Optional[int] = Field(None, description="ID сохранённого сообщения")
+    timestamp: Optional[str] = Field(None, description="Время создания")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "success": True,
+                "image_url": "https://oaidalleapiprodscus.blob.core.windows.net/...",
+                "revised_prompt": "An anime-style illustration of a cute cat...",
+                "analysis": "На изображении кошка сидит на подоконнике...",
+                "message": "Изображение создано! 🎨",
+                "message_id": 12345,
+                "timestamp": "2025-01-17T10:30:00"
+            }
+        }
 
 # =====================================================
 # АУТЕНТИФИКАЦИЯ
@@ -558,7 +601,7 @@ async def get_chat_messages(
                 content=msg.content,
                 tokens_count=msg.tokens_count,
                 created_at=msg.created_at.isoformat(),
-                attachments=[],  # TODO: добавить вложения
+                attachments=msg.attachments,
                 status='sent'
             )
             for msg in messages_data
@@ -874,6 +917,226 @@ async def send_message_with_files(
             detail=f"Failed to send message: {str(e)}"
         )
 
+
+@app.post("/api/chat/generate-image", response_model=ImageGenerationResponse)
+async def generate_image_endpoint(
+        request: ImageGenerationRequest,
+        user: User = Depends(require_tokens(5)),  # 5 токенов за генерацию
+        services: ServiceContainer = Depends(get_services)
+):
+    """
+    🎨 Генерация изображения через DALL-E с опциональным анализом файлов
+
+    Этот эндпоинт:
+    1. Принимает текстовый промпт от пользователя
+    2. Опционально анализирует загруженные изображения (file_ids)
+    3. Комбинирует промпт + анализ файлов
+    4. Генерирует новое изображение через DALL-E 3
+    5. Сохраняет результат в БД
+    6. Списывает токены с баланса пользователя
+
+    Args:
+        request: ImageGenerationRequest с промптом и file_ids
+        user: Текущий пользователь (требуется минимум 5 токенов)
+        services: Контейнер сервисов
+
+    Returns:
+        ImageGenerationResponse с URL изображения или ошибкой
+    """
+    try:
+        logger.info(f"🎨 Image generation request from user {user.user_id}")
+        logger.info(f"📝 Prompt: {request.message[:100]}...")
+        logger.info(f"📎 File IDs: {request.file_ids}")
+
+        # 1. Получаем AI service
+        ai_service = get_ai_service()
+        if not ai_service:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="AI service is not available"
+            )
+
+        # 2. Проверяем доступ к чату
+        chat = services.chat_service.get_chat(request.chat_id, user.user_id)
+        if not chat:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Chat not found or access denied"
+            )
+
+        # 3. Получаем историю чата для контекста
+        chat_history = services.chat_service.get_chat_for_ai_context(
+            request.chat_id,
+            user.user_id,
+            limit=10  # Последние 10 сообщений для контекста
+        )
+
+        # 4. ✅ АНАЛИЗ ФАЙЛОВ (если есть file_ids)
+        files_context = ""
+        analysis_text = ""
+
+        if request.file_ids and len(request.file_ids) > 0:
+            logger.info(f"🔍 Analyzing {len(request.file_ids)} files...")
+
+            analyses = []
+
+            for file_id in request.file_ids:
+                try:
+                    # Получаем информацию о файле из БД
+                    attachment = services.file_service.attachment_repo.get_by_id(file_id)
+
+                    if not attachment:
+                        logger.warning(f"⚠️ File {file_id} not found")
+                        continue
+
+                    # Проверяем владельца файла
+                    if attachment.user_id != user.user_id:
+                        logger.warning(f"⚠️ User {user.user_id} doesn't own file {file_id}")
+                        continue
+
+                    file_path = attachment.file_path
+                    file_type = attachment.file_type
+
+                    # Анализируем в зависимости от типа
+                    if 'image' in file_type:
+                        # 🖼️ АНАЛИЗ ИЗОБРАЖЕНИЯ через GPT-4o Vision
+                        logger.info(f"🖼️ Analyzing image: {attachment.file_name}")
+
+                        image_analysis = await ai_service.analyze_image(
+                            file_path,
+                            prompt=(
+                                "Опиши это изображение максимально детально для создания "
+                                "похожего изображения. Укажи: стиль, композицию, цвета, "
+                                "объекты, освещение, настроение, детали."
+                            )
+                        )
+
+                        if image_analysis and not image_analysis.startswith("Ошибка"):
+                            analyses.append(
+                                f"📷 Анализ '{attachment.original_name}':\n{image_analysis}"
+                            )
+                            logger.info(f"✅ Image analyzed: {len(image_analysis)} chars")
+
+                    elif attachment.extracted_text:
+                        # 📄 ИСПОЛЬЗУЕМ УЖЕ ИЗВЛЕЧЁННЫЙ ТЕКСТ из документа
+                        logger.info(f"📄 Using extracted text from: {attachment.file_name}")
+
+                        analyses.append(
+                            f"📄 Контент из '{attachment.original_name}':\n"
+                            f"{attachment.extracted_text[:1000]}"  # Первые 1000 символов
+                        )
+
+                except Exception as file_error:
+                    logger.error(f"❌ Error analyzing file {file_id}: {file_error}")
+                    continue
+
+            # Объединяем все анализы
+            if analyses:
+                analysis_text = "\n\n".join(analyses)
+                files_context = (
+                    f"\n\n=== КОНТЕКСТ ИЗ ЗАГРУЖЕННЫХ ФАЙЛОВ ===\n\n"
+                    f"{analysis_text}\n\n"
+                    f"=== КОНЕЦ КОНТЕКСТА ===\n\n"
+                )
+                logger.info(f"✅ Files analyzed: {len(analyses)} files, {len(files_context)} chars")
+
+        # 5. Формируем финальный промпт для DALL-E
+        final_prompt = request.message
+
+        if files_context:
+            # Если есть анализ файлов - комбинируем
+            final_prompt = (
+                f"{files_context}"
+                f"На основе информации выше, создай изображение: {request.message}"
+            )
+            logger.info(f"📝 Combined prompt length: {len(final_prompt)} chars")
+
+        # 6. ✅ ГЕНЕРАЦИЯ ИЗОБРАЖЕНИЯ через DALL-E
+        logger.info("🎨 Starting DALL-E image generation...")
+
+        temperature = request.context.get('temperature', 0.7)
+
+        generation_result = await ai_service.generate_image(
+            message=final_prompt,
+            chat_history=chat_history,
+            n=1,
+            agent_prompt=request.agent_prompt,
+            files_context=files_context
+        )
+
+        # 7. Обрабатываем результат генерации
+        if not generation_result.success:
+            logger.error(f"❌ Image generation failed: {generation_result.error}")
+
+            # Возвращаем ошибку без списания токенов
+            return ImageGenerationResponse(
+                success=False,
+                message="Не удалось создать изображение 😔",
+                error=generation_result.error or "Неизвестная ошибка генерации",
+                timestamp=datetime.now().isoformat()
+            )
+
+        # 8. ✅ УСПЕШНАЯ ГЕНЕРАЦИЯ - сохраняем в БД
+        logger.info(f"✅ Image generated successfully: {generation_result.image_url}")
+
+        # Формируем текст сообщения для БД
+        message_content = "Изображение создано! 🎨"
+
+        if analysis_text:
+            message_content = (
+                f"✨ Создано на основе анализа загруженных файлов!\n\n"
+                f"{message_content}"
+            )
+
+        if generation_result.revised_prompt:
+            message_content += f"\n\n💡 Улучшенный промпт: {generation_result.revised_prompt}"
+
+        # Сохраняем сообщение бота в БД
+        ai_message = await services.chat_service.send_message(
+            chat_id=request.chat_id,
+            user_id=user.user_id,
+            content=message_content,
+            role="assistant",
+            tokens_count=5
+        )
+
+        file_data = await save_uploaded_file(
+            requests.get(generation_result.image_url), user, services, ai_message.message_id
+        )
+
+        # 9. ✅ СПИСЫВАЕМ ТОКЕНЫ
+        tokens_used = 5  # За генерацию изображения
+        if request.file_ids:
+            tokens_used += len(request.file_ids) * 2  # +2 токена за каждый файл
+
+        services.user_service.use_tokens(user.user_id, tokens_used)
+        logger.info(f"💰 Deducted {tokens_used} tokens from user {user.user_id}")
+
+        # 10. Возвращаем успешный результат
+        return ImageGenerationResponse(
+            success=True,
+            image_url=generation_result.image_url,
+            revised_prompt=generation_result.revised_prompt,
+            analysis=analysis_text if analysis_text else None,
+            message=message_content,
+            message_id=ai_message.message_id,
+            timestamp=ai_message.created_at.isoformat()
+        )
+
+    except HTTPException:
+    # Пробрасываем HTTP исключения как есть
+        raise
+
+    except Exception as e:
+        logger.error(f"❌ Unexpected error in generate_image_endpoint: {e}", exc_info=True)
+
+        # Возвращаем общую ошибку
+        return ImageGenerationResponse(
+            success=False,
+            message="Произошла ошибка при генерации изображения 😔",
+            error=str(e)[:200],  # Ограничиваем длину сообщения об ошибке
+            timestamp=datetime.now().isoformat()
+        )
 
 @app.post("/api/chat/ai-response")
 async def get_ai_response(
