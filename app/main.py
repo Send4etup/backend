@@ -1100,11 +1100,10 @@ async def generate_image_endpoint(
             tokens_count=5
         )
 
-        file_data = await save_uploaded_file(
-            requests.get(generation_result.image_url), user, services, ai_message.message_id
-        )
+        # file_data = await save_uploaded_file(
+        #     requests.get(generation_result.image_url), user, services, ai_message.message_id
+        # )
 
-        # 9. ✅ СПИСЫВАЕМ ТОКЕНЫ
         tokens_used = 5  # За генерацию изображения
         if request.file_ids:
             tokens_used += len(request.file_ids) * 2  # +2 токена за каждый файл
