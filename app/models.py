@@ -273,3 +273,4 @@ class Attachment(Base):
             "file": "📎"
         }
         return icons.get(category, "📎")
+

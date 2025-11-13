@@ -222,7 +222,6 @@ class ImageGenerationRequest(BaseModel):
             }
         }
 
-
 class ImageGenerationResponse(BaseModel):
     """
     Ответ при генерации изображения
@@ -246,6 +245,58 @@ class ImageGenerationResponse(BaseModel):
                 "message": "Изображение создано! 🎨",
                 "message_id": 12345,
                 "timestamp": "2025-01-17T10:30:00"
+            }
+        }
+
+
+class ChatSettingsRequest(BaseModel):
+    """
+    Запрос на генерацию настроек чата
+    """
+    chat_id: str = Field(..., description="ID чата")
+    message: str = Field(..., description="Сообщение пользователя для анализа")
+    current_settings: Dict = Field(
+        default_factory=dict,
+        description="Текущие настройки чата"
+    )
+    context: Dict = Field(
+        default_factory=dict,
+        description="Дополнительный контекст (tool_type, agent_prompt и т.д.)"
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "chat_id": "temp_analysis_123",
+                "message": "Помоги решить задачу по физике подробно",
+                "current_settings": {
+                    "temperature": 0.7,
+                    "maxLength": "medium",
+                    "language": "ru"
+                },
+                "context": {
+                    "tool_type": "exam_prep",
+                    "agent_prompt": "Ты помощник для подготовки к экзаменам..."
+                }
+            }
+        }
+
+
+class ChatSettingsResponse(BaseModel):
+    """
+    Ответ с рекомендованными настройками
+    """
+    settings: Dict = Field(..., description="Настройки для изменения")
+    success: bool = Field(default=True)
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "settings": {
+                    "temperature": 0.5,
+                    "maxLength": "detailed"
+                },
+                "success": True
             }
         }
 
@@ -1254,6 +1305,59 @@ async def get_ai_response(
             detail=str(e)
         )
 
+
+@app.post("/api/chat/generate-chat-settings", response_model=ChatSettingsResponse)
+async def generate_chat_settings_endpoint(
+        request: ChatSettingsRequest,
+        user: User = Depends(require_tokens(2)),
+        services: ServiceContainer = Depends(get_services)
+):
+    """
+    🎯 Генерация AI-рекомендаций по настройкам чата
+
+    Анализирует сообщение пользователя и предлагает оптимальные настройки
+    для температуры, длины ответа и других параметров.
+
+    **Стоимость:** ~2 токена за запрос
+
+    **Примеры использования:**
+    - "Кратко объясни" → maxLength: 'short'
+    - "Помоги с кодом" → temperature: 0.3
+    - "Придумай идеи" → temperature: 1.0
+    """
+    try:
+        logger.info(f"📥 Settings generation request from user {user.user_id}")
+
+        # Получаем AI service
+        ai_service = get_ai_service()  # Замени на свою функцию
+
+        # Извлекаем tool_type из контекста
+        tool_type = request.context.get("tool_type", "default")
+
+        logger.info(request.current_settings)
+
+        # Генерируем настройки
+        recommended_settings = await ai_service.generate_chat_settings(
+            chat_id=request.chat_id,
+            message=request.message,
+            tool_type=tool_type,
+            current_settings=request.current_settings,
+        )
+
+        logger.info(f"✅ Generated settings: {recommended_settings}")
+
+        # Возвращаем JSON (НЕ streaming!)
+        return ChatSettingsResponse(
+            settings=recommended_settings,
+            success=True
+        )
+
+    except Exception as e:
+        logger.error(f"❌ Settings generation error: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate settings: {str(e)}"
+        )
 
 @app.post("/api/chat/save-partial-response")
 async def save_partial_response(

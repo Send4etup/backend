@@ -6,6 +6,7 @@
 
 import os
 import logging
+import json
 from typing import Dict, Any, List, Optional, AsyncIterator
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
@@ -39,6 +40,7 @@ class AIService:
         # Инициализируем клиент OpenAI
         self.client = AsyncOpenAI(api_key=api_key)
         self.model = os.getenv("OPENAI_MODEL", "gpt-4o")
+        self.assistant_id = os.getenv("OPENAI_ASSISTANT_ID", "asst_KFEOeEojNWKAiZPEpNxUEnlk")
 
         logger.info(f"AIService initialized with model: {self.model}")
 
@@ -857,6 +859,121 @@ class AIService:
 
             logger.info(f"Using fallback title: '{fallback_title}'")
             return fallback_title
+
+    async def generate_chat_settings(
+            self,
+            chat_id: str,
+            message: str,
+            tool_type: str,
+            current_settings: dict,
+    ) -> dict:
+        """
+        🎯 Генерация настроек с использованием существующего Assistant + Vector Store
+        """
+        try:
+            logger.info(f"🧠 Generating settings for chat {chat_id} (type: {tool_type})")
+
+            if not message.strip():
+                return {}
+
+
+            settings_json = json.dumps(current_settings, ensure_ascii=False, indent=2)
+
+            # Создаем thread
+            thread = await self.client.beta.threads.create()
+
+            # Добавляем сообщение
+            await self.client.beta.threads.messages.create(
+                thread_id=thread.id,
+                role="user",
+                content=f"""Тип чата: {tool_type}
+                Текущие настройки: {settings_json}
+                Запрос: {message[:500]}
+            
+                Верни JSON с настройками для изменения."""
+            )
+
+            # Запускаем Assistant
+            run = await self.client.beta.threads.runs.create(
+                thread_id=thread.id,
+                assistant_id=self.assistant_id,
+                temperature=0.2,
+                max_completion_tokens=200
+            )
+
+            # Ждем завершения
+            max_attempts = 30
+            attempt = 0
+
+            while run.status in ["queued", "in_progress", "requires_action"]:
+                if attempt >= max_attempts:
+                    logger.error("⏱️ Timeout")
+                    await self.client.beta.threads.delete(thread.id)
+                    return {}
+
+                run = await self.client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
+                attempt += 1
+
+            # Получаем ответ
+            if run.status == "completed":
+                messages = await self.client.beta.threads.messages.list(
+                    thread_id=thread.id,
+                    order="desc",
+                    limit=1
+                )
+
+                if messages.data:
+                    ai_response = messages.data[0].content[0].text.value
+                    logger.info(f"📝 Raw AI response: {ai_response}")
+
+                    # Парсим JSON
+                    ai_response = ai_response.replace("```json", "").replace("```", "").strip()
+
+                    import re
+                    json_match = re.search(r'\{[^\}]*\}', ai_response, re.DOTALL)
+                    if not json_match:
+                        await self.client.beta.threads.delete(thread.id)
+                        return {}
+
+                    recommended_settings = json.loads(json_match.group())
+
+                    if not isinstance(recommended_settings, dict):
+                        await self.client.beta.threads.delete(thread.id)
+                        return {}
+
+                    # Валидация
+                    valid_settings = {}
+
+                    if "temperature" in recommended_settings:
+                        try:
+                            temp = float(recommended_settings["temperature"])
+                            if 0.2 <= temp <= 1.2:
+                                valid_settings["temperature"] = temp
+                        except (ValueError, TypeError):
+                            pass
+
+                    if "maxLength" in recommended_settings:
+                        if recommended_settings["maxLength"] in ["short", "medium", "detailed"]:
+                            valid_settings["maxLength"] = recommended_settings["maxLength"]
+
+                    if "language" in recommended_settings:
+                        if recommended_settings["language"] in ["ru", "en"]:
+                            valid_settings["language"] = recommended_settings["language"]
+
+                    logger.info(f"✅ Valid settings: {valid_settings}")
+
+                    await self.client.beta.threads.delete(thread.id)
+                    return valid_settings
+
+            else:
+                logger.error(f"❌ Run failed: {run.status}")
+
+            await self.client.beta.threads.delete(thread.id)
+            return {}
+
+        except Exception as e:
+            logger.error(f"❌ Settings generation failed: {e}", exc_info=True)
+            return {}
 
 
 # ==================== ГЛОБАЛЬНЫЙ ЭКЗЕМПЛЯР СЕРВИСА ====================
