@@ -1,6 +1,8 @@
 # app/services/chat_service.py
 from datetime import datetime
 from typing import List, Dict, Any
+
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.repositories.chat_repository import ChatRepository
 from app.repositories.message_repository import MessageRepository
