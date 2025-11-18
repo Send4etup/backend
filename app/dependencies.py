@@ -19,10 +19,14 @@ class ServiceContainer:
         from app.services.user_service import UserService
         from app.services.chat_service import ChatService
         from app.services.file_service import FileService
+        from app.services.image_service import ImageService
+        from app.tasks.image_cleanup_task import ImageCleanupTask
 
         self.user_service = UserService(db)
         self.chat_service = ChatService(db)
         self.file_service = FileService(db)
+        self.image_service = ImageService()
+        self.image_cleanup_task = ImageCleanupTask(image_service=self.image_service)
 
 
 def get_services(db: Session = Depends(get_db)) -> ServiceContainer:

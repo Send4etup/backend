@@ -26,13 +26,14 @@ class MessageRepository(BaseRepository[Message]):
                 .all())
 
     def create_message(self, chat_id: str, user_id: str, role: str, 
-                      content: str, tokens_count: int = 0) -> Message:
+                      content: str, tokens_count: int = 0, tool_type: str = 'general') -> Message:
         return self.create(
             chat_id=chat_id,
             user_id=user_id,
             role=role,
             content=content,
-            tokens_count=tokens_count
+            tokens_count=tokens_count,
+            tool_type=tool_type
         )
 
     def delete_by_chat_id(self, chat_id: str):

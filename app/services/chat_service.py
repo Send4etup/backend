@@ -31,7 +31,7 @@ class ChatService:
         return chat
 
     async def send_message(self, chat_id: str, user_id: str, content: str, role: str = "user",
-                           tokens_count: int = 0) -> Message:
+                           tokens_count: int = 0, tool_type: str = 'general') -> Message:
         chat = self.chat_repo.get_by_id(chat_id)
         if not chat:
             raise ValueError(f"Chat not found: {chat_id}")
@@ -67,7 +67,7 @@ class ChatService:
 
         # Создаем сообщение
         message = self.message_repo.create_message(
-            chat_id, user_id, role, content, tokens_count
+            chat_id, user_id, role, content, tokens_count, tool_type
         )
 
         # Обновляем статистику чата

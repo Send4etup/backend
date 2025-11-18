@@ -151,6 +151,7 @@ class Message(Base):
     user_id = Column(String, ForeignKey("users.user_id"), nullable=False)
 
     role = Column(String, nullable=False)  # user, assistant, system
+    tool_type = Column(String, nullable=True, default="general")
     content = Column(Text, nullable=False)
     tokens_count = Column(Integer, default=0)
 
@@ -274,3 +275,82 @@ class Attachment(Base):
         }
         return icons.get(category, "📎")
 
+
+class GeneratedImage(Base):
+    """
+    Модель для сгенерированных DALL-E изображений
+    Сохраняет изображения локально для обхода CORS и истечения ссылок OpenAI
+    """
+    __tablename__ = "generated_images"
+
+    image_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.user_id"), nullable=False)
+    chat_id = Column(String, ForeignKey("chats.chat_id"), nullable=True)
+    message_id = Column(Integer, ForeignKey("messages.message_id"), nullable=True)
+
+    # Информация об изображении
+    original_url = Column(String, nullable=False)  # Оригинальная ссылка от OpenAI
+    local_path = Column(String, nullable=False)  # Локальный путь к сохранённому файлу
+    file_name = Column(String, nullable=False)  # Имя файла
+    file_size = Column(Integer, nullable=True)  # Размер в байтах
+
+    # Промпты
+    user_prompt = Column(Text, nullable=False)  # Оригинальный промпт пользователя
+    revised_prompt = Column(Text, nullable=True)  # Улучшенный промпт от DALL-E
+
+    # Параметры генерации
+    model = Column(String, default="dall-e-2")  # dall-e-2 или dall-e-3
+    size = Column(String, default="1024x1024")  # Размер изображения
+    quality = Column(String, default="standard")  # standard или hd
+    style = Column(String, nullable=True)  # vivid или natural (только для DALL-E 3)
+
+    # Временные метки
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(MoscowTZ))
+    expires_at = Column(DateTime(timezone=True), nullable=True)  # Когда истекает оригинальная ссылка OpenAI
+    downloaded_at = Column(DateTime(timezone=True), nullable=True)  # Когда файл скачан локально
+
+    # Статус
+    is_downloaded = Column(Boolean, default=False)  # Скачан ли файл локально
+    download_error = Column(Text, nullable=True)  # Ошибка при скачивании (если была)
+
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id])
+    chat = relationship("Chat", foreign_keys=[chat_id])
+    message = relationship("Message", foreign_keys=[message_id])
+
+    def __repr__(self):
+        return f"<GeneratedImage(image_id={self.image_id}, user_id={self.user_id}, is_downloaded={self.is_downloaded})>"
+
+    @property
+    def file_size_mb(self) -> float:
+        """Размер файла в МБ"""
+        if not self.file_size:
+            return 0.0
+        return round(self.file_size / (1024 * 1024), 2)
+
+    @property
+    def is_expired(self) -> bool:
+        """Истекла ли оригинальная ссылка OpenAI"""
+        if not self.expires_at:
+            return False
+        return datetime.now(MoscowTZ) > self.expires_at
+
+    @property
+    def local_url(self) -> str:
+        """URL для доступа к локальному файлу"""
+        return f"/api/images/generated/{self.image_id}"
+
+    def get_display_info(self) -> dict:
+        """Информация для отображения в UI"""
+        return {
+            "image_id": self.image_id,
+            "local_url": self.local_url,
+            "original_url": self.original_url if not self.is_expired else None,
+            "user_prompt": self.user_prompt,
+            "revised_prompt": self.revised_prompt,
+            "size": self.size,
+            "model": self.model,
+            "created_at": self.created_at.isoformat(),
+            "is_downloaded": self.is_downloaded,
+            "file_size_mb": self.file_size_mb
+        }

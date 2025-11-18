@@ -3,10 +3,13 @@
 Инициализация приложения при запуске
 """
 from app.config import settings
+from app.services import image_service
+from app.services.image_service import ImageService
 from app.services.telegram_validator import init_telegram_validator
 import logging
 import os
 
+from app.tasks.image_cleanup_task import ImageCleanupTask
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +18,8 @@ async def startup_event():
     """
     Инициализация приложения с безопасным Telegram валидатором
     """
+    global ai_service, image_service, image_cleanup_task, image_service_instance
+
     logger.info("🚀 Starting ТоварищБот API...")
 
     try:
@@ -70,6 +75,24 @@ async def startup_event():
         except Exception as e:
             logger.warning(f"⚠️ AI service check failed: {e}")
 
+        # Инициализация ImageService
+        try:
+            image_service_instance = ImageService(base_upload_dir="uploads")
+            logger.info("✅ ImageService initialized")
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize ImageService: {e}")
+
+        # Запуск планировщика очистки
+        try:
+            image_cleanup_task = ImageCleanupTask(
+                image_service=image_service,
+                cleanup_days=30
+            )
+            image_cleanup_task.start()
+            logger.info("✅ Image cleanup scheduler started")
+        except Exception as e:
+            logger.error(f"❌ Failed to start cleanup scheduler: {e}")
+
         # 7. Логируем успешную инициализацию
         environment = os.getenv("ENVIRONMENT", "development")
         logger.info(f"🎯 Environment: {environment}")
@@ -86,7 +109,6 @@ async def startup_event():
         logger.error(f"❌ CRITICAL: Application startup failed: {e}")
         logger.error("Application cannot start safely. Exiting...")
         raise SystemExit(1)
-
 
 # Функция для проверки конфигурации безопасности при старте
 def validate_security_config():
@@ -129,7 +151,11 @@ def validate_security_config():
 async def shutdown_event():
     """События при завершении приложения"""
     logger.info("🛑 Shutting down ТоварищБот Backend...")
+    global ai_service, image_cleanup_task
 
     # Здесь можно добавить очистку ресурсов
+    if image_cleanup_task:
+        image_cleanup_task.stop()
+        logger.info("✅ Image cleanup scheduler stopped")
 
     logger.info("✅ ТоварищБот Backend shutdown complete!")

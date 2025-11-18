@@ -57,6 +57,7 @@ email-validator==2.1.0
 # ОБРАБОТКА ФАЙЛОВ И ДОКУМЕНТОВ
 # =====================================
 Pillow==10.1.0
+pillow-heif
 python-magic-bin==0.4.14
 PyPDF2==3.0.1
 PyMuPDF==1.23.14
@@ -103,3 +104,5 @@ PyJWT==2.8.0
 
 fastapi-csrf-protect==0.3.4
 requests
+
+APScheduler
