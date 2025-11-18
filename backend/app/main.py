@@ -52,7 +52,7 @@ from PIL import Image
 
 image_service_instance = None
 
-load_dotenv()
+load_dotenv(dotenv_path="../.env")
 
 # Настройка логирования
 logging.basicConfig(
