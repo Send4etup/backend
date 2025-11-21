@@ -7,6 +7,7 @@
 import os
 import logging
 import json
+import asyncio
 from typing import Dict, Any, List, Optional, AsyncIterator
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
@@ -910,6 +911,8 @@ class AIService:
                     logger.error("⏱️ Timeout")
                     await self.client.beta.threads.delete(thread.id)
                     return {}
+
+                await asyncio.sleep(1)
 
                 run = await self.client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
                 attempt += 1

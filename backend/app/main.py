@@ -1,31 +1,75 @@
-# app/main.py
 """
 ТоварищБот Backend API
+Образовательный ИИ-помощник для учеников и студентов
 """
-from fastapi import FastAPI, HTTPException, Depends, status, File, UploadFile, Form, Request
+
+# ============================================
+# СТАНДАРТНАЯ БИБЛИОТЕКА PYTHON
+# ============================================
+import os
+import uuid
+import logging
+from pathlib import Path
+from datetime import datetime
+from typing import Optional, List, Dict, Any
+
+# ============================================
+# СТОРОННИЕ ПАКЕТЫ
+# ============================================
+# FastAPI
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    Depends,
+    status,
+    File,
+    UploadFile,
+    Form,
+    Request
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
-import uuid
-import os
-from pathlib import Path
-from datetime import datetime
-import logging
-from dotenv import load_dotenv
-from sqlalchemy.orm import Session
-import requests
 
+# Pydantic (если нужны дополнительные импорты, не из schemas)
+from pydantic import BaseModel, Field
+
+# SQLAlchemy
+from sqlalchemy.orm import Session
+
+# Другие сторонние
+import requests
+import magic
+from PIL import Image
+from dotenv import load_dotenv
+
+# ============================================
+# ЛОКАЛЬНЫЕ МОДУЛИ ПРИЛОЖЕНИЯ
+# ============================================
+
+# Аутентификация и безопасность
 from app.auth import JWT_EXPIRATION_HOURS, JWTManager
-# Импорты наших модулей
-from app.database import get_db
-from app.dependencies import (
-    get_services, get_current_user, require_tokens,
-    ServiceContainer, security
+from app.security import CORSConfig
+from app.services.telegram_validator import (
+    validate_telegram_init_data,
+    TelegramDataValidationError,
+    get_telegram_validator
 )
+
+# База данных
+from app.database import get_db
 from app.models import User, Chat, Message, Attachment
-from app.services import image_service
+
+# Зависимости
+from app.dependencies import (
+    get_services,
+    get_current_user,
+    require_tokens,
+    ServiceContainer,
+    security
+)
+
+# ИИ сервисы
 from app.services.ai import (
     get_ai_service,
     ImageProcessor,
@@ -33,36 +77,70 @@ from app.services.ai import (
     DocumentProcessor
 )
 
+# Другие сервисы
+from app.services import image_service
 from app.services.image_service import ImageService
+from app.services.file_extractor import cleanup_file
+from app.logging import setup_logging
+
+# Задачи и startup
 from app.startup import startup_event, shutdown_event
 from app.tasks.image_cleanup_task import ImageCleanupTask
 
-from app.security import CORSConfig
-from app.services.telegram_validator import (
-    validate_telegram_init_data,
-    TelegramDataValidationError
+# Константы
+from app.constants import (
+    UPLOAD_DIR,
+    SUPPORTED_IMAGE_TYPES,
+    SUPPORTED_DOCUMENT_TYPES,
+    SUPPORTED_AUDIO_TYPES,
+    MAX_FILE_SIZE,
+    MAX_FILES_PER_MESSAGE,
+    is_image,
+    is_document,
+    is_audio,
+    get_file_category
 )
 
+# Pydantic схемы
+from app.schemas import (
+    TelegramAuthRequest,
+    CreateChatRequest,
+    SendMessageRequest,
+    ChatContext,
+    AIResponseRequest,
+    UserProfileResponse,
+    ChatResponse,
+    MessageResponse,
+    UserFileResponse,
+    ImageGenerationRequest,
+    ImageGenerationResponse,
+    ChatSettingsRequest,
+    ChatSettingsResponse
+)
+
+# ============================================
+# ЗАКОММЕНТИРОВАННЫЕ ИМПОРТЫ (для будущего использования)
+# ============================================
 # from fastapi_csrf_protect import CsrfProtect
 # from fastapi_csrf_protect.exceptions import CsrfProtectError
-# from app.security import CORSConfig, init_csrf_protection, get_csrf_error_response
+# from app.security import init_csrf_protection, get_csrf_error_response
 
-import magic
-from PIL import Image
+# ============================================
+# ИНИЦИАЛИЗАЦИЯ
+# ============================================
 
-image_service_instance = None
-
+# Загрузка переменных окружения
 load_dotenv(dotenv_path="../.env")
 
-# Настройка логирования
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logger = setup_logging()
 
-logger = logging.getLogger(__name__)
+# Глобальные переменные
+image_service_instance = None
 
-# Создаем FastAPI приложение
+# ============================================
+# СОЗДАНИЕ ПРИЛОЖЕНИЯ FASTAPI
+# ============================================
+
 app = FastAPI(
     title="ТоварищБот API",
     description="Образовательный ИИ-помощник для учеников и студентов",
@@ -71,239 +149,49 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
+# ============================================
+# MIDDLEWARE И НАСТРОЙКИ
+# ============================================
+
 # CORS настройки
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORSConfig.get_allowed_origins(),  # ✅ Только разрешенные домены
-    allow_credentials=True,  # Теперь безопасно с конкретными доменами
+    allow_origins=CORSConfig.get_allowed_origins(),
+    allow_credentials=True,
     allow_methods=CORSConfig.get_allowed_methods(),
     allow_headers=CORSConfig.get_allowed_headers(),
     expose_headers=CORSConfig.get_expose_headers()
 )
 
+# CSRF настройки (закомментировано)
 # csrf_settings = init_csrf_protection()
 
+# ============================================
+# ОБРАБОТЧИКИ ИСКЛЮЧЕНИЙ
+# ============================================
 
 # @app.exception_handler(CsrfProtectError)
 # async def csrf_protect_exception_handler(request: Request, exc: CsrfProtectError):
 #     """Обработчик ошибок CSRF"""
 #     logger.warning(f"🛡️ CSRF атака заблокирована: {exc} от IP: {request.client.host}")
-#
 #     return JSONResponse(
 #         status_code=status.HTTP_403_FORBIDDEN,
 #         content=get_csrf_error_response()
 #     )
 
-# События жизненного цикла
+# ============================================
+# СОБЫТИЯ ЖИЗНЕННОГО ЦИКЛА
+# ============================================
+
 app.add_event_handler("startup", startup_event)
 app.add_event_handler("shutdown", shutdown_event)
 
-# Создаем директории для файлов
-UPLOAD_DIR = Path("uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
+# ============================================
+# СТАТИЧЕСКИЕ ФАЙЛЫ
+# ============================================
 
-# Константы
-SUPPORTED_IMAGE_TYPES = {
-    'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/heic', 'image/heif'
-}
-SUPPORTED_DOCUMENT_TYPES = {
-    'application/pdf', 'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'text/plain', 'application/rtf', 'text/csv',
-    'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-}
-SUPPORTED_AUDIO_TYPES = {
-    'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/wave',
-    'audio/x-wav', 'audio/m4a', 'audio/mp4', 'audio/aac',
-    'audio/webm', 'audio/ogg', 'audio/vorbis'
-}
-
-MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
-MAX_FILES_PER_MESSAGE = 10
-
-# Монтируем статические файлы
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
-
-# Pydantic модели для API
-class TelegramAuthRequest(BaseModel):
-    """
-    Новая модель для безопасной авторизации через Telegram
-    """
-    init_data: str  # Полные данные от window.Telegram.WebApp.initData
-
-class CreateChatRequest(BaseModel):
-    title: str
-    chat_type: Optional[str] = "general"
-
-
-class SendMessageRequest(BaseModel):
-    chat_id: str
-    message: str
-    tool_type: Optional[str] = None
-
-class ChatContext(BaseModel):
-    tool_type: str = 'general'
-    agent_prompt: Optional[str] = None
-    temperature: float = 0.7
-
-class AIResponseRequest(BaseModel):
-    message: str
-    chat_id: Optional[str] = None
-    context: ChatContext
-    file_ids: Optional[List[str]] = None
-
-
-class UserProfileResponse(BaseModel):
-    user_id: str
-    telegram_id: int
-    subscription_type: str
-    tokens_balance: int
-    tokens_used: int
-    subscription_limits: Dict[str, Any]
-    created_at: str
-    last_activity: str
-
-class ChatResponse(BaseModel):
-    chat_id: str
-    title: str
-    type: str
-    messages_count: int
-    tokens_used: int
-    created_at: str
-    updated_at: str
-    last_message: Optional[str] = None
-
-
-class MessageResponse(BaseModel):
-    message_id: int
-    chat_id: str
-    role: str
-    content: str
-    tokens_count: int
-    created_at: str
-    attachments: List[Dict[str, Any]] = []
-    status: str
-
-
-class FileResponse(BaseModel):
-    file_id: str
-    file_name: str
-    file_type: str
-    file_size: int
-    file_size_mb: float
-    category: str
-    icon: str
-    uploaded_at: str
-
-class ImageGenerationRequest(BaseModel):
-    """
-    Запрос на генерацию изображения через DALL-E
-    """
-    chat_id: str = Field(..., description="ID чата")
-    message: str = Field(..., description="Текстовый промпт для генерации")
-    agent_prompt: Optional[str] = Field(None, description="Системный промпт агента")
-    context: Optional[Dict[str, Any]] = Field(
-        default_factory=dict,
-        description="Дополнительный контекст (tool_type, temperature)"
-    )
-    file_ids: Optional[List[str]] = Field(
-        default_factory=list,
-        description="Массив ID файлов для анализа (опционально)"
-    )
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "chat_id": "chat_123abc",
-                "message": "создай в стиле аниме",
-                "agent_prompt": "Ты помощник для создания изображений",
-                "context": {
-                    "tool_type": "images",
-                    "temperature": 0.7
-                },
-                "file_ids": ["file_abc123", "file_xyz789"]
-            }
-        }
-
-class ImageGenerationResponse(BaseModel):
-    """
-    Ответ при генерации изображения
-    """
-    success: bool = Field(..., description="Успешность генерации")
-    image_url: Optional[str] = Field(None, description="URL сгенерированного изображения")
-    revised_prompt: Optional[str] = Field(None, description="Улучшенный промпт от DALL-E")
-    analysis: Optional[str] = Field(None, description="Анализ загруженных изображений")
-    message: str = Field(..., description="Сообщение для пользователя")
-    error: Optional[str] = Field(None, description="Описание ошибки если есть")
-    message_id: Optional[int] = Field(None, description="ID сохранённого сообщения")
-    timestamp: Optional[str] = Field(None, description="Время создания")
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "success": True,
-                "image_url": "https://oaidalleapiprodscus.blob.core.windows.net/...",
-                "revised_prompt": "An anime-style illustration of a cute cat...",
-                "analysis": "На изображении кошка сидит на подоконнике...",
-                "message": "Изображение создано! 🎨",
-                "message_id": 12345,
-                "timestamp": "2025-01-17T10:30:00"
-            }
-        }
-
-
-class ChatSettingsRequest(BaseModel):
-    """
-    Запрос на генерацию настроек чата
-    """
-    chat_id: str = Field(..., description="ID чата")
-    message: str = Field(..., description="Сообщение пользователя для анализа")
-    current_settings: Dict = Field(
-        default_factory=dict,
-        description="Текущие настройки чата"
-    )
-    context: Dict = Field(
-        default_factory=dict,
-        description="Дополнительный контекст (tool_type, agent_prompt и т.д.)"
-    )
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "chat_id": "temp_analysis_123",
-                "message": "Помоги решить задачу по физике подробно",
-                "current_settings": {
-                    "temperature": 0.7,
-                    "maxLength": "medium",
-                    "language": "ru"
-                },
-                "context": {
-                    "tool_type": "exam_prep",
-                    "agent_prompt": "Ты помощник для подготовки к экзаменам..."
-                }
-            }
-        }
-
-
-class ChatSettingsResponse(BaseModel):
-    """
-    Ответ с рекомендованными настройками
-    """
-    settings: Dict = Field(..., description="Настройки для изменения")
-    success: bool = Field(default=True)
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "settings": {
-                    "temperature": 0.5,
-                    "maxLength": "detailed"
-                },
-                "success": True
-            }
-        }
 
 # =====================================================
 # АУТЕНТИФИКАЦИЯ
@@ -404,8 +292,6 @@ async def get_security_status():
     📊 Информация о состоянии системы безопасности
     """
     try:
-        # Проверяем инициализацию валидатора
-        from app.services.telegram_validator import get_telegram_validator
         validator = get_telegram_validator()
         validator_status = "initialized"
     except:
@@ -950,8 +836,6 @@ async def send_message_with_files(
         for file_data in uploaded_files:
             if file_data.get('file_type') in SUPPORTED_DOCUMENT_TYPES:
                 try:
-                    from app.services.file_extractor import cleanup_file
-
                     user_dir = UPLOAD_DIR / user.user_id
                     file_path = user_dir / file_data['file_name']
 
@@ -1229,7 +1113,7 @@ async def get_original_image(
                 detail="Original image not found"
             )
 
-        return FileResponse(
+        return UserFileResponse(
             path=original_path,
             media_type="image/png",
             filename=f"generated_{image_id}.png"
@@ -1836,7 +1720,7 @@ async def save_uploaded_file(
             detail=f"Failed to save file: {str(e)}"
         )
 
-@app.post("/api/files/upload", response_model=FileResponse)
+@app.post("/api/files/upload", response_model=UserFileResponse)
 async def upload_file(
         file: UploadFile = File(...),
         user: User = Depends(get_current_user),
@@ -1862,7 +1746,7 @@ async def upload_file(
         # Получаем информацию о файле из БД
         attachment = services.file_service.attachment_repo.get_by_id(file_data["file_id"])
 
-        return FileResponse(
+        return UserFileResponse(
             file_id=attachment.file_id,
             file_name=attachment.file_name,
             file_type=attachment.file_type,
@@ -1883,7 +1767,7 @@ async def upload_file(
         )
 
 
-@app.get("/api/files", response_model=List[FileResponse])
+@app.get("/api/files", response_model=List[UserFileResponse])
 async def get_user_files(
         limit: int = 50,
         user: User = Depends(get_current_user),
@@ -1894,7 +1778,7 @@ async def get_user_files(
         attachments = services.file_service.attachment_repo.get_user_files(user.user_id, limit)
 
         return [
-            FileResponse(
+            UserFileResponse(
                 file_id=att.file_id,
                 file_name=att.file_name,
                 file_type=att.file_type,
@@ -2074,7 +1958,6 @@ def _get_extension_by_mime(mime_type: str) -> str:
 @app.get("/api/security/cors-info")
 async def get_cors_info():
     """Информация о CORS настройках (только для разработки)"""
-    from app.security import CORSConfig
 
     if not CORSConfig.is_development():
         raise HTTPException(
@@ -2247,13 +2130,13 @@ async def get_image_storage_stats(
 # ЗАПУСК ПРИЛОЖЕНИЯ
 # =====================================================
 
-if __name__ == "__main__":
-    import uvicorn
-
-    print("🚀 Starting ТоварищБот API with SQLite Database...")
-    print("📍 Server: http://127.0.0.1:3213")
-    print("📚 API Docs: http://127.0.0.1:3213/docs")
-    print("🗄️ Database: SQLite with full integration")
-    print("📁 File uploads: uploads/ directory")
-
-    uvicorn.run(app, host="127.0.0.1", port=3213)
+# if __name__ == "__main__":
+#     import uvicorn
+#
+#     print("🚀 Starting ТоварищБот API with SQLite Database...")
+#     print("📍 Server: http://127.0.0.1:3213")
+#     print("📚 API Docs: http://127.0.0.1:3213/docs")
+#     print("🗄️ Database: SQLite with full integration")
+#     print("📁 File uploads: uploads/ directory")
+#
+#     uvicorn.run(app, host="127.0.0.1", port=3213)
