@@ -6,6 +6,6 @@
 __pycache__
 uploads
 school_assistant.db
-
+logs
 *.key
 secrets/

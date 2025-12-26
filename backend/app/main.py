@@ -74,7 +74,7 @@ from app.services.ai import (
     get_ai_service,
     ImageProcessor,
     AudioProcessor,
-    DocumentProcessor
+    DocumentProcessor,
 )
 
 # Другие сервисы
@@ -82,6 +82,7 @@ from app.services import image_service
 from app.services.image_service import ImageService
 from app.services.file_extractor import cleanup_file
 from app.logging import setup_logging
+from app.services import TokenCounter
 
 # Задачи и startup
 from app.startup import startup_event, shutdown_event
@@ -721,10 +722,13 @@ async def send_message(
     try:
         chat = services.chat_service.get_chat(request.chat_id, user.user_id)
 
+        counter = TokenCounter("gpt-4o")
+        input_tokens = counter.text_tokens(request.message)
+
         logger.info('chat type: ' + chat.type + ', message: ' + request.message)
 
         user_message = await services.chat_service.send_message(
-            request.chat_id, user.user_id, request.message, "user", 2, chat.type
+            request.chat_id, user.user_id, request.message, "user", input_tokens, chat.type
         )
 
         return {
@@ -762,27 +766,30 @@ async def send_message_with_files(
                 detail="Необходимо отправить текст или прикрепить файлы"
             )
 
-        # ✅ 1. СНАЧАЛА создаем сообщение пользователя
         user_message = None
+        counter = TokenCounter("gpt-4o")
+
+        input_tokens = 0
 
         chat = services.chat_service.get_chat(chat_id, user.user_id)
 
         if message.strip():
             # Если есть текст - используем его
             user_message = await services.chat_service.send_message(
-                chat_id, user.user_id, message, "user", chat.type
+                chat_id, user.user_id, message, "user", counter.text_tokens(message), chat.type
             )
             logger.info(f"✅ Sent user message: {user_message.message_id}")
         elif len(files) > 0:
-            # Если только файлы - создаем placeholder сообщение
             auto_message = f"Прикреплено файлов: {len(files)}"
             user_message = await services.chat_service.send_message(
-                chat_id, user.user_id, auto_message, "user", chat.type
+                chat_id, user.user_id, auto_message, "user", 2, chat.type
             )
             logger.info(f"✅ Sent auto-generated message for files: {user_message.message_id}")
 
         uploaded_files = []
         file_errors = []
+
+        tokens_used = 0
 
         for file in files:
             if not file.filename:
@@ -805,15 +812,13 @@ async def send_message_with_files(
                 )
                 uploaded_files.append(file_data)
 
+                tokens_used += counter.text_tokens(file_data["extracted_text"])
+
                 logger.info(f"Uploaded file: {file.filename} -> {file_data['file_id']}")
 
             except Exception as e:
                 logger.error(f"Error uploading file {file.filename}: {e}")
                 file_errors.append(f"{file.filename}: {str(e)}")
-
-        # 3. Списываем токены за сообщение
-        tokens_used = 1
-        tokens_used += len(uploaded_files) * 2
 
         if user.tokens_balance >= tokens_used:
             services.user_service.use_tokens(user.user_id, tokens_used)
@@ -844,11 +849,6 @@ async def send_message_with_files(
 
                 except Exception as e:
                     logger.warning(f"⚠️ Failed to auto-delete file: {e}")
-
-        # Логируем извлеченный текст
-        if uploaded_files and uploaded_files[0].get('extracted_text'):
-            logger.info(f"📄 Extracted text preview: {uploaded_files[0]['extracted_text'][:200]}...")
-
         return response_data
 
     except HTTPException:
@@ -868,21 +868,20 @@ async def generate_image_endpoint(
         services: ServiceContainer = Depends(get_services)
 ):
     """
-    Генерация изображения с DALL-E 3 + автоматическое сохранение и сжатие
+    Генерация изображения с DALL-E 3 + автоматическое сохранение
 
-    Новый функционал:
-    - 🎨 Сохранение оригинала в uploads/generated-images/original/
-    - 🗜️ Создание сжатой WebP версии в uploads/generated-images/compressed/
-    - 💾 Экономия до 90% места на диске
-    - 🚀 Быстрая загрузка сжатых версий в чате
-    - 📊 Статистика сжатия
+    НОВЫЙ ФУНКЦИОНАЛ:
+    - Сохранение PNG в таблицу Attachment
+    - URL для скачивания с бэкенда /api/files/download/{file_id}
+    - Доступ только для владельца файла
+    - Хранение оригинала для качественного скачивания
     """
     try:
         logger.info(f"🎨 Image generation request from user {user.user_id}")
         logger.info(f"📝 Prompt: {request.message[:100]}...")
         logger.info(f"📎 File IDs: {request.file_ids}")
 
-        # 1. Получаем AI service
+        counter = TokenCounter("gpt-4o")
         ai_service = get_ai_service()
         if not ai_service:
             raise HTTPException(
@@ -890,7 +889,6 @@ async def generate_image_endpoint(
                 detail="AI service is not available"
             )
 
-        # 2. Проверяем доступ к чату
         chat = services.chat_service.get_chat(request.chat_id, user.user_id)
         if not chat:
             raise HTTPException(
@@ -902,10 +900,9 @@ async def generate_image_endpoint(
         chat_history = services.chat_service.get_chat_for_ai_context(
             request.chat_id,
             user.user_id,
-            limit=10  # Последние 10 сообщений для контекста
+            limit=10
         )
 
-        # 4. ✅ АНАЛИЗ ФАЙЛОВ (если есть file_ids)
         files_context = ""
         analysis_text = ""
 
@@ -974,18 +971,15 @@ async def generate_image_endpoint(
                 )
                 logger.info(f"✅ Files analyzed: {len(analyses)} files, {len(files_context)} chars")
 
-        # 5. Формируем финальный промпт для DALL-E
         final_prompt = request.message
 
         if files_context:
-            # Если есть анализ файлов - комбинируем
             final_prompt = (
                 f"{files_context}"
                 f"На основе информации выше, создай изображение: {request.message}"
             )
             logger.info(f"📝 Combined prompt length: {len(final_prompt)} chars")
 
-        # 6. ✅ ГЕНЕРАЦИЯ ИЗОБРАЖЕНИЯ через DALL-E
         logger.info("🎨 Starting DALL-E image generation...")
 
         generation_result = await ai_service.generate_image(
@@ -996,20 +990,21 @@ async def generate_image_endpoint(
             files_context=files_context
         )
 
-        # 7. Обрабатываем результат генерации
         if not generation_result.success:
             logger.error(f"❌ Image generation failed: {generation_result.error}")
 
-            # Возвращаем ошибку без списания токенов
             return ImageGenerationResponse(
                 success=False,
-                message="Не удалось создать изображение 😔",
+                message="Не удалось создать изображение",
                 error=generation_result.error or "Неизвестная ошибка генерации",
                 timestamp=datetime.now().isoformat()
             )
 
-        # 8. 🎨 НОВОЕ: СОХРАНЯЕМ И СЖИМАЕМ ИЗОБРАЖЕНИЕ
-        logger.info("💾 Saving and compressing generated image...")
+        logger.info("Saving generated image...")
+
+        attachment = None
+        display_image_url = generation_result.image_url
+        saved_image = None
 
         try:
             img_svc = ImageService(base_upload_dir="uploads")
@@ -1020,65 +1015,72 @@ async def generate_image_endpoint(
                 prompt=request.message[:100]
             )
 
-            logger.info(
-                f"✅ Image saved!\n"
-                f"   Original: {int(saved_image['file_size_original']) / 1024:.1f} KB\n"
-                f"   Compressed: {int(saved_image['file_size_compressed']) / 1024:.1f} KB\n"
-                f"   Savings: {saved_image['compression_ratio']}%"
-            )
-
-            display_image_url = saved_image['compressed_url']
-
         except Exception as save_error:
-            logger.error(f"❌ Error saving image: {save_error}")
+            logger.error(f"Error saving image to disk: {save_error}")
             logger.exception(save_error)
             display_image_url = generation_result.image_url
-            saved_image = None
 
-        # 9. ✅ УСПЕШНАЯ ГЕНЕРАЦИЯ - сохраняем в БД
-        logger.info(f"✅ Image generated successfully: {generation_result.image_url}")
-
-        # Формируем текст сообщения для БД
-        message_content = "Изображение создано! 🎨"
+        message_content = "Изображение создано!"
 
         if analysis_text:
             message_content = (
-                f"✨ Создано на основе анализа загруженных файлов!\n\n"
+                f"Создано на основе анализа загруженных файлов!\n\n"
                 f"{message_content}"
             )
 
         if generation_result.revised_prompt:
-            message_content += f"\n\n💡 Улучшенный промпт: {generation_result.revised_prompt}"
+            message_content += f"\n\nУлучшенный промпт: {generation_result.revised_prompt}"
 
-        # Добавляем информацию о сжатии
-        if saved_image:
-            message_content += (
-                f"\n\n📊 Сжатие: {saved_image['compression_ratio']}% "
-                f"   Original: {int(saved_image['file_size_original']) / 1024:.1f} KB\n"
-                f"   Compressed: {int(saved_image['file_size_compressed']) / 1024:.1f} KB\n"
-            )
-
-        # Сохраняем сообщение бота в БД
         ai_message = await services.chat_service.send_message(
             chat_id=request.chat_id,
             user_id=user.user_id,
             content=message_content,
             role="assistant",
-            tokens_count=5
+            tokens_count=counter.image_tokens(1024, 1024),
         )
 
-        # 10. Списываем токены
-        tokens_used = 5  # За генерацию изображения
+        if saved_image:
+            try:
+                original_file_path = saved_image['original_path']
+                file_name = os.path.basename(original_file_path)
+
+                attachment = Attachment(
+                    user_id=user.user_id,
+                    file_name=file_name,
+                    original_name=f"generated_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png",
+                    file_path=original_file_path,
+                    file_type="image/png",
+                    file_size=saved_image['file_size_original']
+                )
+
+                # Добавляем в БД
+                services.file_service.db.add(attachment)
+                services.file_service.db.commit()
+                services.file_service.db.refresh(attachment)
+
+                display_image_url = f"/api/files/download/{attachment.file_id}"
+
+                logger.info(f"✅ Attachment created and linked to message {ai_message.message_id}")
+                logger.info(f"📥 File ID: {attachment.file_id}")
+                logger.info(f"📥 Download URL: {display_image_url}")
+
+            except Exception as attach_error:
+                logger.error(f"❌ Error creating attachment: {attach_error}")
+                logger.exception(attach_error)
+                # Если не удалось создать attachment - используем fallback URL
+                attachment = None
+
+        tokens_used = 5
         if request.file_ids:
-            tokens_used += len(request.file_ids) * 2  # +2 токена за каждый файл
+            tokens_used += len(request.file_ids) * 2
 
         services.user_service.use_tokens(user.user_id, tokens_used)
         logger.info(f"💰 Deducted {tokens_used} tokens from user {user.user_id}")
 
-        # 11. Возвращаем успешный результат
         return ImageGenerationResponse(
             success=True,
-            image_url=display_image_url,  # Сжатая версия для отображения
+            image_url=display_image_url,
+            attachment_id=attachment.file_id if attachment else None,
             revised_prompt=generation_result.revised_prompt,
             analysis=analysis_text if analysis_text else None,
             message=message_content,
@@ -1089,13 +1091,13 @@ async def generate_image_endpoint(
     except HTTPException:
         # Пробрасываем HTTP исключения как есть
         raise
+
     except Exception as e:
         logger.error(f"❌ Unexpected error in image generation: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate image: {str(e)}"
         )
-
 
 @app.get("/api/images/{image_id}/original")
 async def get_original_image(
@@ -1129,6 +1131,89 @@ async def get_original_image(
         )
 
 
+@app.get("/api/files/download/{file_id}")
+async def download_file(
+        file_id: str,
+        user: User = Depends(get_current_user),
+        services: ServiceContainer = Depends(get_services)
+):
+    """
+    Функционал:
+    - Проверяет права доступа (только владелец файла)
+    - Отдает файл с правильными заголовками для скачивания
+    - Работает для всех типов файлов: изображения, документы, аудио
+    - Поддерживает кэширование для оптимизации
+
+    Args:
+        file_id: ID файла в таблице Attachment
+        user: Авторизованный пользователь
+        services: Контейнер сервисов
+
+    Returns:
+        FileResponse с файлом для скачивания
+
+    Raises:
+        404: Файл не найден в БД или на диске
+        403: Доступ запрещен (не владелец файла)
+    """
+    try:
+        attachment = services.file_service.attachment_repo.get_by_id(file_id)
+
+        if not attachment:
+            logger.warning(f"⚠️ File {file_id} not found in database")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="File not found"
+            )
+
+        if attachment.user_id != user.user_id:
+            logger.warning(
+                f"🚫 User {user.user_id} trying to access file {file_id} "
+                f"owned by {attachment.user_id}"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: you don't own this file"
+            )
+
+        from pathlib import Path
+        file_path = Path(attachment.file_path)
+
+        if not file_path.exists():
+            logger.error(f"❌ File not found on disk: {attachment.file_path}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="File not found on server"
+            )
+
+        logger.info(
+            f"✅ Serving file: {attachment.original_name} "
+            f"({attachment.file_type}, {attachment.file_size_mb} MB) "
+            f"to user {user.user_id}"
+        )
+
+        return FileResponse(
+            path=str(file_path),
+            filename=attachment.original_name,
+            media_type=attachment.file_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="{attachment.original_name}"',
+                "Cache-Control": "public, max-age=31536000, immutable",
+                "X-File-Size": str(attachment.file_size),
+                "X-File-Type": attachment.file_type,
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error downloading file {file_id}: {e}")
+        logger.exception(e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error downloading file: {str(e)}"
+        )
+
 @app.post("/api/chat/ai-response")
 async def get_ai_response(
         request: AIResponseRequest,
@@ -1158,6 +1243,8 @@ async def get_ai_response(
 
         # Получаем AI service
         ai_service = get_ai_service()
+        counter = TokenCounter("gpt-4o")
+
         if not ai_service:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -1173,7 +1260,7 @@ async def get_ai_response(
             if chat_info.type != 'image':
                 try:
                     logger.info(f"Generating response for user {user.user_id}")
-                    # Используем существующий get_response_stream
+
                     async for chunk in ai_service.get_response_stream(
                         request.message,
                         request.context.tool_type,
@@ -1185,13 +1272,15 @@ async def get_ai_response(
                         full_response += chunk
                         yield chunk
 
+                    output_tokens = counter.text_tokens(full_response)
+
                     # После завершения - сохраняем полный ответ в БД
                     ai_message = await services.chat_service.send_message(
-                        request.chat_id, user.user_id, full_response, "assistant", 2, chat_info.type
+                        request.chat_id, user.user_id, full_response, "assistant", output_tokens, chat_info.type
                     )
 
                     # Списываем токены
-                    services.user_service.use_tokens(user.user_id, 2)
+                    services.user_service.use_tokens(user.user_id, output_tokens)
 
                 except Exception as e:
                     logger.error(f"Streaming error: {e}")
@@ -1218,7 +1307,7 @@ async def get_ai_response(
                     )
 
                     # Списываем токены
-                    services.user_service.use_tokens(user.user_id, 5)
+                    services.user_service.use_tokens(user.user_id, )
 
                     logger.info(f"Image response: {full_response}")
 
@@ -1253,19 +1342,6 @@ async def generate_chat_settings_endpoint(
         user: User = Depends(require_tokens(2)),
         services: ServiceContainer = Depends(get_services)
 ):
-    """
-    🎯 Генерация AI-рекомендаций по настройкам чата
-
-    Анализирует сообщение пользователя и предлагает оптимальные настройки
-    для температуры, длины ответа и других параметров.
-
-    **Стоимость:** ~2 токена за запрос
-
-    **Примеры использования:**
-    - "Кратко объясни" → maxLength: 'short'
-    - "Помоги с кодом" → temperature: 0.3
-    - "Придумай идеи" → temperature: 1.0
-    """
     try:
         logger.info(f"📥 Settings generation request from user {user.user_id}")
 

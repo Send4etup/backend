@@ -4,6 +4,7 @@ from typing import List, Dict, Any
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+from app.services.ai import get_ai_service
 from app.repositories.chat_repository import ChatRepository
 from app.repositories.message_repository import MessageRepository
 from app.repositories.user_repository import UserRepository
@@ -12,6 +13,7 @@ from app.models import Chat, Message, Attachment
 import logging
 import os
 from app.services.ai.ai_service import AIService
+
 
 logger = logging.getLogger(__name__)
 
@@ -45,8 +47,6 @@ class ChatService:
 
         if chat.messages_count == 0 and content:
             try:
-                from app.services.ai import get_ai_service
-
                 ai_service = get_ai_service()
                 if ai_service:
                     chat.title = await ai_service.get_chat_title(

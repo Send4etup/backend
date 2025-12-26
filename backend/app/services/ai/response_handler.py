@@ -48,6 +48,7 @@ class ResponseHandler:
             max_tokens: Optional[int] = None,
             temperature: float = 0.7,
             agent_prompt: str = None,
+            thread_id: str = None,
     ) -> AsyncIterator[str]:
         """
         Получить потоковый ответ от GPT с учетом файлов и истории
@@ -60,9 +61,20 @@ class ResponseHandler:
             max_tokens: Максимальное количество токенов
             temperature: float
             agent_prompt: str
+            thread_id: ID треда для OpenAI Assistant (для типа write_essay)
         Yields:
             Части ответа (chunks)
         """
+        if context == "write_work":
+            logger.info(f"Detected write_essay type, using Assistant API with thread_id={thread_id}")
+            async for chunk in self._get_essay_assistant_stream(
+                    message=message,
+                    thread_id=thread_id,
+                    files_context=files_context,
+                    chat_history=chat_history
+            ):
+                yield chunk
+            return
         try:
             chat_history = chat_history or []
 
@@ -87,7 +99,6 @@ class ResponseHandler:
             messages = [
                 {"role": "system", "content": system_prompt}
             ]
-
 
             # Добавляем историю чата
             if chat_history:
@@ -197,6 +208,157 @@ class ResponseHandler:
             logger.info(f"Yielding fallback response: {fallback_response[:100]}...")
             yield fallback_response
 
+    async def _get_essay_assistant_stream(
+            self,
+            message: str,
+            thread_id: Optional[str] = None,
+            files_context: str = '',
+            chat_history: List[Dict[str, Any]] = None,
+    ) -> AsyncIterator[str]:
+        """
+        Получить потоковый ответ от OpenAI Assistant для типа write_essay
+
+        Args:
+            message: Сообщение пользователя
+            thread_id: ID существующего треда или None для создания нового
+            files_context: Контекст из файлов
+            chat_history: История чата (для fallback)
+
+        Yields:
+            Части ответа (chunks)
+        """
+        try:
+            assistant_id = "asst_Wg74tuRJ3RxdTGEWD8GE9krb"
+
+            logger.info(
+                f"Starting Assistant API stream: assistant={assistant_id}, "
+                f"thread={thread_id}, message='{message[:50]}...'"
+            )
+
+            create_new_thread = not thread_id
+
+            # Шаг 1: Создать или использовать существующий thread
+            if create_new_thread:
+                logger.info("Creating new thread for write_essay chat")
+                thread = await self.client.beta.threads.create()
+                thread_id = thread.id
+                logger.info(f"Created new thread: {thread_id}")
+            else:
+                logger.info(f"Using existing thread: {thread_id}")
+
+            if create_new_thread and chat_history:
+                logger.info(f"Adding {len(chat_history)} history messages to new thread")
+
+                # Берем последние 10 сообщений для контекста
+                recent_history = chat_history[-10:]
+
+                for msg in recent_history:
+                    role = msg.get("role")
+                    content = msg.get("content", "")
+
+                    if not content or not role:
+                        continue
+
+                    # Обрабатываем файлы из истории
+                    if msg.get("files") and role == "user":
+                        file_texts = []
+                        file_names = []
+
+                        for file_data in msg["files"]:
+                            file_name = file_data.get("original_name", "файл")
+                            file_names.append(file_name)
+
+                            # Извлекаем текст если есть
+                            extracted = file_data.get("extracted_text")
+                            if extracted and extracted.strip() and extracted != "None":
+                                file_texts.append(
+                                    f"\n--- Содержимое файла '{file_name}' ---\n"
+                                    f"{extracted}\n"
+                                    f"--- Конец файла ---\n"
+                                )
+
+                        # Формируем content с текстами файлов
+                        if file_texts:
+                            content = f"{content}\n\n{''.join(file_texts)}"
+                        elif file_names:
+                            file_info = ", ".join(file_names)
+                            content = f"{content}\n[Прикреплены файлы: {file_info}]"
+
+                    # Добавляем сообщение из истории в thread
+                    await self.client.beta.threads.messages.create(
+                        thread_id=thread_id,
+                        role=role,
+                        content=content
+                    )
+
+                logger.info(f"Added {len(recent_history)} history messages to thread")
+
+            # Шаг 2: Подготовить сообщение с контекстом файлов
+            if files_context:
+                logger.info("Preparing message with files context")
+                message_content = (
+                    f"Текст от пользователя:\n{message}\n\n"
+                    f"Извлеченный текст из файлов:\n{files_context}"
+                )
+            else:
+                message_content = message
+
+            # Шаг 3: Добавить сообщение в thread
+            await self.client.beta.threads.messages.create(
+                thread_id=thread_id,
+                role="user",
+                content=message_content
+            )
+
+            logger.info(f"Message added to thread {thread_id}")
+
+            # Шаг 4: Запустить Assistant с streaming
+            logger.info(f"Starting Assistant run with streaming...")
+
+            async with self.client.beta.threads.runs.stream(
+                    thread_id=thread_id,
+                    assistant_id=assistant_id,
+
+            ) as stream:
+                chunk_count = 0
+
+                # Шаг 5: Стримить ответ
+                async for event in stream:
+                    # Обрабатываем только текстовые дельты
+                    if event.event == "thread.message.delta":
+                        if hasattr(event.data, 'delta') and hasattr(event.data.delta, 'content'):
+                            for content_delta in event.data.delta.content:
+                                if hasattr(content_delta, 'text') and content_delta.text:
+                                    if hasattr(content_delta.text, 'value'):
+                                        text_value = content_delta.text.value
+                                        if text_value:
+                                            chunk_count += 1
+                                            logger.debug(
+                                                f"Chunk {chunk_count}: '{text_value[:30]}...'"
+                                            )
+                                            yield text_value
+
+            logger.info(
+                f"Assistant streaming completed successfully. "
+                f"Total chunks: {chunk_count}, thread_id: {thread_id}"
+            )
+
+        except Exception as e:
+            logger.error(
+                f"Assistant API streaming error: {str(e)}",
+                exc_info=True
+            )
+
+            # Fallback ответ при ошибке Assistant API
+            fallback_response = self._get_fallback_response(
+                message,
+                "write_essay",
+                bool(files_context)
+            )
+
+            logger.info(f"Yielding fallback response for write_essay: {fallback_response[:100]}...")
+            yield fallback_response
+
     def _get_fallback_response(
             self,
             message: str,
@@ -246,6 +408,12 @@ class ResponseHandler:
                 f"Временные проблемы с ИИ.{file_info} "
                 f"Ваш запрос на создание заметок по '{message[:50]}...' получен. 📝 "
                 f"Пока что рекомендую записать основные моменты самостоятельно."
+            ),
+
+            "write_essay": (
+                f"ИИ-ассистент для написания работ временно недоступен.{file_info} "
+                f"Ваш запрос '{message[:50]}...' получен. ✍️ "
+                f"Попробуйте позже, система восстановится в ближайшее время."
             ),
 
             "audio_transcribe": (
@@ -477,6 +645,7 @@ class ResponseHandler:
             max_tokens: Optional[int] = None,
             temperature: float = 0.7,
             agent_prompt: str = None,
+            thread_id: str = None,
     ) -> str:
         """
         Получить полный ответ (не потоковый) от GPT
@@ -489,6 +658,7 @@ class ResponseHandler:
             max_tokens: Максимальное количество токенов
             temperature: float,
             agent_prompt: str,
+            thread_id: ID треда для OpenAI Assistant (для типа write_essay)
         Returns:
             Полный ответ от GPT
         """
@@ -504,6 +674,7 @@ class ResponseHandler:
                     max_tokens,
                     temperature,
                     agent_prompt,
+                    thread_id,
             ):
                 full_response += chunk
 

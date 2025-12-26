@@ -97,6 +97,8 @@ class Chat(Base):
     type = Column(String, default="general")  # general, image, coding, brainstorm, excuse, make_notes
     title = Column(String, nullable=False)
 
+    assistant_thread_id = Column(String, nullable=True, default=None)
+
     # Статистика
     messages_count = Column(Integer, default=0)
     tokens_used = Column(Integer, default=0)

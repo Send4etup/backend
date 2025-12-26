@@ -107,6 +107,7 @@ class ImageGenerationResponse(BaseModel):
     """
     success: bool = Field(..., description="Успешность генерации")
     image_url: Optional[str] = Field(None, description="URL сгенерированного изображения")
+    attachment_id: Optional[str] = Field(None, description="ID сгенерированного изображения")
     revised_prompt: Optional[str] = Field(None, description="Улучшенный промпт от DALL-E")
     analysis: Optional[str] = Field(None, description="Анализ загруженных изображений")
     message: str = Field(..., description="Сообщение для пользователя")

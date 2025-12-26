@@ -1,1 +1,1162 @@
 2025-11-21 21:52:25 | INFO     | tovarishbot | 🚀 Логирование настроено. Файл: logs\tovarishbot_20251121.log
+2025-11-21 21:52:27 | INFO     | tovarishbot | 🚀 Логирование настроено. Файл: logs\tovarishbot_20251121.log
+2025-11-21 21:52:27 | INFO     | app.startup | 🚀 Starting ТоварищБот API...
+2025-11-21 21:52:27 | INFO     | app.services.telegram_validator | Telegram validator initialized
+2025-11-21 21:52:27 | INFO     | app.services.telegram_validator | Telegram validator initialized globally
+2025-11-21 21:52:27 | INFO     | app.startup | ✅ Telegram validator initialized successfully
+2025-11-21 21:52:27 | INFO     | app.startup | 📁 Upload directory ready: uploads
+2025-11-21 21:52:27 | INFO     | app.database | Database tables created successfully
+2025-11-21 21:52:27 | INFO     | app.startup | ✅ Database initialized successfully
+2025-11-21 21:52:27 | INFO     | app.services.ai.ai_service | AIService initialized with model: gpt-4o
+2025-11-21 21:52:27 | INFO     | app.services.ai.audio_processor | FFmpeg is available
+2025-11-21 21:52:27 | INFO     | app.services.ai.ai_service | All processors initialized successfully
+2025-11-21 21:52:27 | INFO     | app.services.ai.ai_service | AIService instance created successfully
+2025-11-21 21:52:27 | INFO     | app.services.ai.ai_service | Performing health check...
+2025-11-21 21:52:29 | INFO     | httpx | HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-21 21:52:29 | INFO     | app.services.ai.ai_service | Health check passed
+2025-11-21 21:52:29 | INFO     | app.startup | ✅ AI service is healthy
+2025-11-21 21:52:29 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:52:29 | INFO     | app.startup | ✅ ImageService initialized
+2025-11-21 21:52:29 | INFO     | apscheduler.scheduler | Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-11-21 21:52:29 | INFO     | apscheduler.scheduler | Added job "Clean up old generated images" to job store "default"
+2025-11-21 21:52:29 | INFO     | apscheduler.scheduler | Scheduler started
+2025-11-21 21:52:29 | INFO     | app.tasks.image_cleanup_task | ✅ Image cleanup scheduler started
+   Schedule: Daily at 03:00
+   Cleanup threshold: >30 days
+2025-11-21 21:52:29 | INFO     | app.startup | ✅ Image cleanup scheduler started
+2025-11-21 21:52:29 | INFO     | app.startup | 🎯 Environment: development
+2025-11-21 21:52:29 | INFO     | app.startup | ✅ Application startup completed successfully
+2025-11-21 21:52:29 | INFO     | app.startup | 🔐 Security features enabled:
+2025-11-21 21:52:29 | INFO     | app.startup |    - Telegram HMAC-SHA256 validation
+2025-11-21 21:52:29 | INFO     | app.startup |    - JWT token authentication
+2025-11-21 21:52:29 | INFO     | app.startup |    - CORS protection
+2025-11-21 21:52:29 | INFO     | app.startup |    - Request rate limiting
+2025-11-21 21:52:36 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 21:52:43 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 21:54:03 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 21:54:23 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 21:54:37 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:54:37 | INFO     | tovarishbot | 🔐 Starting secure Telegram authentication
+2025-11-21 21:54:37 | INFO     | app.services.telegram_validator | Starting Telegram initData validation
+2025-11-21 21:54:37 | INFO     | app.services.telegram_validator | ✅ HMAC signature verified successfully
+2025-11-21 21:54:37 | INFO     | app.services.telegram_validator | ✅ Successfully validated Telegram user: 1849285548
+2025-11-21 21:54:37 | INFO     | tovarishbot | ✅ Telegram initData validation successful
+2025-11-21 21:54:37 | INFO     | tovarishbot | 🆔 Validated Telegram user ID: 1849285548
+2025-11-21 21:54:37 | INFO     | app.services.user_service | User authenticated: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:54:37 | INFO     | app.auth | ✅ JWT token created for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:54:37 | INFO     | tovarishbot | ✅ Secure authentication successful for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:54:37 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:54:37 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 21:54:37 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 21:54:37 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:54:37 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 21:54:37 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:54:37 | INFO     | watchfiles.main | 3 changes detected
+2025-11-21 21:54:37 | INFO     | app.dependencies | 🧹 Auto-cleaned 5 empty chats for user d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:54:37 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1124, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 21:54:37 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 21:54:37 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 21:54:37 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 21:54:37 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 21:54:37 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 21:54:37 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:54:37 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 21:54:37 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 21:54:37 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:54:37 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 21:54:37 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:54:37 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1124, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 21:54:37 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 21:54:37 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 21:54:37 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 21:54:37 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 21:54:37 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 21:54:37 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:54:37 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 21:54:37 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 21:54:37 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:54:37 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 21:54:37 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:54:37 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1124, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 21:54:37 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 21:54:37 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 21:54:37 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 21:54:37 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 21:54:37 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 21:54:37 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:54:37 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 21:54:37 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 21:54:37 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:54:37 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 21:54:37 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:54:37 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1124, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 21:54:37 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 21:54:37 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 21:54:37 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 21:54:37 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 21:54:37 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 21:54:37 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:54:37 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 21:54:37 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 21:54:37 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:54:37 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 21:54:37 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:54:37 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1124, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 21:54:37 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 21:54:37 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 21:54:37 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 21:54:37 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 21:54:37 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 21:54:37 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:54:37 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 21:54:37 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 21:54:37 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:54:37 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 21:54:37 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:54:37 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1124, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 21:54:37 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 21:54:37 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 21:54:37 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 21:54:37 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 21:54:37 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 21:54:38 | INFO     | watchfiles.main | 3 changes detected
+2025-11-21 21:54:44 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 21:54:45 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 21:54:46 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 21:55:57 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:55:57 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 21:55:57 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 21:55:57 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:55:57 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 21:55:57 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:55:57 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1124, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 21:55:57 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 21:55:57 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 21:55:57 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 21:55:57 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 21:55:57 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 21:55:57 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:55:57 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 21:55:57 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 21:55:57 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:55:57 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 21:55:57 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:55:57 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1124, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 21:55:57 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 21:55:57 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 21:55:57 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 21:55:57 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 21:55:57 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 21:55:57 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:55:57 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 21:55:57 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 21:55:57 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:55:57 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 21:55:57 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:55:57 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1124, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 21:55:57 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 21:55:57 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 21:55:57 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 21:55:57 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 21:55:57 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 21:55:57 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:55:57 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 21:55:57 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 21:55:57 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:55:57 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 21:55:57 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:55:57 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1124, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 21:55:57 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 21:55:57 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 21:55:57 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 21:55:57 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 21:55:57 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 21:55:57 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:55:57 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 21:55:57 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 21:55:57 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:55:57 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 21:55:57 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:55:57 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1124, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 21:55:57 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 21:55:57 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 21:55:57 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 21:55:57 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 21:55:57 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 21:55:57 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:55:57 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 21:55:57 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 21:55:57 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:55:57 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 21:55:57 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:55:57 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1124, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 21:55:57 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 21:55:57 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 21:55:57 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 21:55:57 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 21:55:57 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 21:55:57 | INFO     | watchfiles.main | 3 changes detected
+2025-11-21 21:55:58 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:55:58 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 21:55:59 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 21:55:59 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:55:59 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 21:55:59 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:55:59 | INFO     | app.services.chat_service | Chat created: 4566b218-2fc0-474b-964a-5ce699e84a5e for user d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:55:59 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:55:59 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 21:55:59 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 21:55:59 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:55:59 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 21:55:59 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:55:59 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 0 messages
+2025-11-21 21:55:59 | INFO     | tovarishbot | send result
+2025-11-21 21:55:59 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:55:59 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 21:55:59 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 21:55:59 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:55:59 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 21:55:59 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:55:59 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 0 messages
+2025-11-21 21:55:59 | INFO     | tovarishbot | send result
+2025-11-21 21:55:59 | INFO     | watchfiles.main | 3 changes detected
+2025-11-21 21:56:03 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:56:03 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 21:56:03 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 21:56:03 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:56:03 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 21:56:03 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:56:03 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1124, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 21:56:03 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 21:56:03 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 21:56:03 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 21:56:03 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 21:56:03 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 21:56:03 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:56:03 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 21:56:03 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 21:56:03 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:56:03 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 21:56:03 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:56:03 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1124, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 21:56:03 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 21:56:03 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 21:56:03 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 21:56:03 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 21:56:03 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 21:56:03 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:56:03 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 21:56:03 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 21:56:03 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:56:03 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 21:56:03 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:56:03 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1124, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 21:56:03 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 21:56:03 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 21:56:03 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 21:56:03 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 21:56:03 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 21:56:03 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:56:03 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 21:56:03 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 21:56:03 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:56:03 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 21:56:03 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:56:03 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1124, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 21:56:03 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 21:56:03 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 21:56:03 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 21:56:03 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 21:56:03 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 21:56:03 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:56:03 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 21:56:03 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 21:56:03 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:56:03 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 21:56:03 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:56:03 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1124, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 21:56:03 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 21:56:03 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 21:56:03 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 21:56:03 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 21:56:03 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 21:56:03 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:56:03 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 21:56:03 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 21:56:03 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:56:03 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 21:56:03 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:56:03 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1124, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 21:56:03 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 21:56:03 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 21:56:03 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 21:56:03 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 21:56:03 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 21:56:03 | INFO     | watchfiles.main | 3 changes detected
+2025-11-21 21:56:05 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:56:05 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 21:56:05 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 21:56:05 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:56:05 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 21:56:05 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:56:05 | ERROR    | app.services.chat_service | Error getting chat statistics: type object 'Chat' has no attribute 'id'
+2025-11-21 21:56:05 | INFO     | watchfiles.main | 3 changes detected
+2025-11-21 21:56:06 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:56:06 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 21:56:06 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 21:56:06 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:56:06 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 21:56:06 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:56:06 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1124, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 21:56:06 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 21:56:06 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 21:56:06 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 21:56:06 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 21:56:06 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 21:56:06 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:56:06 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 21:56:06 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 21:56:06 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:56:06 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 21:56:06 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:56:06 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1124, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 21:56:06 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 21:56:06 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 21:56:06 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 21:56:06 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 21:56:06 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 21:56:06 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:56:06 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 21:56:06 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 21:56:06 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:56:06 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 21:56:06 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:56:06 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1124, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 21:56:06 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 21:56:06 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 21:56:06 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 21:56:06 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 21:56:06 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 21:56:06 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:56:06 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 21:56:06 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 21:56:06 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:56:06 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 21:56:06 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:56:06 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1124, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 21:56:06 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 21:56:06 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 21:56:06 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 21:56:06 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 21:56:06 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 21:56:06 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:56:06 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 21:56:06 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 21:56:06 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:56:06 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 21:56:06 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:56:06 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1124, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 21:56:06 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 21:56:06 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 21:56:06 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 21:56:06 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 21:56:06 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 21:56:06 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 21:56:06 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 21:56:06 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 21:56:06 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:56:06 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 21:56:06 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 21:56:06 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1124, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 21:56:06 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 21:56:06 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 21:56:06 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 21:56:06 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 21:56:06 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 21:56:06 | INFO     | watchfiles.main | 3 changes detected
+2025-11-21 21:56:08 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 21:56:23 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 21:56:38 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 21:56:53 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 21:57:08 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 21:57:23 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 21:57:38 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 21:57:53 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 21:58:08 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 21:58:23 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 21:58:38 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 21:58:53 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 21:59:08 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 21:59:23 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 21:59:38 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 21:59:53 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 22:00:08 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 22:00:23 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 22:00:38 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 22:00:54 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 22:01:09 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 22:01:24 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 22:01:39 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 22:01:54 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 22:02:09 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 22:02:24 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 22:02:39 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 22:02:54 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 22:03:09 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 22:03:09 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 22:03:20 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 22:03:30 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 22:03:51 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 22:03:58 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 22:04:00 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 22:04:09 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:04:09 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:04:09 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:04:09 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:04:09 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:04:09 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:04:09 | INFO     | app.services.chat_service | Message 1114 has 0 attachments
+2025-11-21 22:04:09 | INFO     | app.services.chat_service | Message 1115 has 0 attachments
+2025-11-21 22:04:09 | INFO     | app.services.chat_service | Message 1116 has 0 attachments
+2025-11-21 22:04:09 | INFO     | app.services.chat_service | Message 1117 has 0 attachments
+2025-11-21 22:04:09 | INFO     | app.services.chat_service | Message 1118 has 0 attachments
+2025-11-21 22:04:09 | INFO     | app.services.chat_service | Message 1119 has 0 attachments
+2025-11-21 22:04:09 | INFO     | app.services.chat_service | Message 1120 has 0 attachments
+2025-11-21 22:04:09 | INFO     | app.services.chat_service | Message 1121 has 0 attachments
+2025-11-21 22:04:09 | INFO     | app.services.chat_service | Message 1122 has 0 attachments
+2025-11-21 22:04:09 | INFO     | app.services.chat_service | Message 1123 has 0 attachments
+2025-11-21 22:04:09 | INFO     | app.services.chat_service | Message 1124 has 0 attachments
+2025-11-21 22:04:09 | INFO     | app.services.chat_service | Message 1125 has 0 attachments
+2025-11-21 22:04:09 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 12 messages
+2025-11-21 22:04:09 | INFO     | tovarishbot | send result
+2025-11-21 22:04:09 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:04:09 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:04:09 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:04:09 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:04:09 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:04:09 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:04:09 | INFO     | app.services.chat_service | Message 1114 has 0 attachments
+2025-11-21 22:04:09 | INFO     | app.services.chat_service | Message 1115 has 0 attachments
+2025-11-21 22:04:09 | INFO     | app.services.chat_service | Message 1116 has 0 attachments
+2025-11-21 22:04:09 | INFO     | app.services.chat_service | Message 1117 has 0 attachments
+2025-11-21 22:04:09 | INFO     | app.services.chat_service | Message 1118 has 0 attachments
+2025-11-21 22:04:09 | INFO     | app.services.chat_service | Message 1119 has 0 attachments
+2025-11-21 22:04:09 | INFO     | app.services.chat_service | Message 1120 has 0 attachments
+2025-11-21 22:04:09 | INFO     | watchfiles.main | 3 changes detected
+2025-11-21 22:04:09 | INFO     | app.services.chat_service | Message 1121 has 0 attachments
+2025-11-21 22:04:09 | INFO     | app.services.chat_service | Message 1122 has 0 attachments
+2025-11-21 22:04:09 | INFO     | app.services.chat_service | Message 1123 has 0 attachments
+2025-11-21 22:04:09 | INFO     | app.services.chat_service | Message 1124 has 0 attachments
+2025-11-21 22:04:09 | INFO     | app.services.chat_service | Message 1125 has 0 attachments
+2025-11-21 22:04:09 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 12 messages
+2025-11-21 22:04:09 | INFO     | tovarishbot | send result
+2025-11-21 22:06:27 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 22:07:06 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:07:06 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:07:06 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:07:06 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:07:06 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:07:06 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:07:06 | INFO     | app.dependencies | ✅ Token check passed for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:07:06 | INFO     | tovarishbot | 📥 Settings generation request from user d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:07:06 | INFO     | tovarishbot | {'temperature': 0.7, 'maxLength': 'detailed', 'language': 'ru', 'withComments': True, 'codeStyle': 'clean', 'explainSteps': True, 'defaultLanguage': 'python'}
+2025-11-21 22:07:06 | INFO     | app.services.ai.ai_service | 🧠 Generating settings for chat 688ae131-2886-4fe2-98ca-1630bd6dad3c (type: coding)
+2025-11-21 22:07:06 | INFO     | watchfiles.main | 3 changes detected
+2025-11-21 22:07:08 | INFO     | httpx | HTTP Request: POST https://api.openai.com/v1/threads "HTTP/1.1 200 OK"
+2025-11-21 22:07:09 | INFO     | httpx | HTTP Request: POST https://api.openai.com/v1/threads/thread_LV78ZxXJRKYe4UbP9DIJEJT0/messages "HTTP/1.1 200 OK"
+2025-11-21 22:07:11 | INFO     | httpx | HTTP Request: POST https://api.openai.com/v1/threads/thread_LV78ZxXJRKYe4UbP9DIJEJT0/runs "HTTP/1.1 200 OK"
+2025-11-21 22:07:12 | INFO     | httpx | HTTP Request: GET https://api.openai.com/v1/threads/thread_LV78ZxXJRKYe4UbP9DIJEJT0/runs/run_80Q2C4Z0ppwwmgjcjmdeBP7U "HTTP/1.1 200 OK"
+2025-11-21 22:07:14 | INFO     | httpx | HTTP Request: GET https://api.openai.com/v1/threads/thread_LV78ZxXJRKYe4UbP9DIJEJT0/runs/run_80Q2C4Z0ppwwmgjcjmdeBP7U "HTTP/1.1 200 OK"
+2025-11-21 22:07:14 | INFO     | httpx | HTTP Request: GET https://api.openai.com/v1/threads/thread_LV78ZxXJRKYe4UbP9DIJEJT0/messages?limit=1&order=desc "HTTP/1.1 200 OK"
+2025-11-21 22:07:14 | INFO     | app.services.ai.ai_service | 📝 Raw AI response: {
+  "temperature": 0.5,
+  "maxLength": "short",
+  "language": "ru"
+}
+2025-11-21 22:07:14 | INFO     | app.services.ai.ai_service | ✅ Valid settings: {'temperature': 0.5, 'maxLength': 'short', 'language': 'ru'}
+2025-11-21 22:07:15 | INFO     | httpx | HTTP Request: DELETE https://api.openai.com/v1/threads/thread_LV78ZxXJRKYe4UbP9DIJEJT0 "HTTP/1.1 200 OK"
+2025-11-21 22:07:15 | INFO     | tovarishbot | ✅ Generated settings: {'temperature': 0.5, 'maxLength': 'short', 'language': 'ru'}
+2025-11-21 22:07:15 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:07:15 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:07:15 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:07:15 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:07:15 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:07:15 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:07:15 | INFO     | app.dependencies | ✅ Token check passed for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:07:15 | INFO     | tovarishbot | chat type: coding, message: привет как дела
+2025-11-21 22:07:15 | INFO     | app.services.chat_service | Sending message
+2025-11-21 22:07:15 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:07:15 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:07:15 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:07:15 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:07:15 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:07:15 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:07:15 | INFO     | app.dependencies | ✅ Token check passed for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:07:15 | INFO     | app.services.chat_service | Chat 688ae131-2886-4fe2-98ca-1630bd6dad3c has 13 messages
+2025-11-21 22:07:15 | INFO     | app.services.chat_service | Retrieved 13 messages for AI context, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c
+2025-11-21 22:07:15 | INFO     | tovarishbot | Chat history length: 13
+2025-11-21 22:07:15 | INFO     | tovarishbot | Generating response for user d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:07:15 | INFO     | app.services.ai.ai_service | Getting streaming response for message: 'привет как дела...'
+2025-11-21 22:07:15 | INFO     | app.services.ai.response_handler | Starting streaming request: message='привет как дела...', history_length=13, has_files=False
+2025-11-21 22:07:15 | INFO     | app.services.ai.response_handler | AI prompt: 'Ты - специализированный программистский ментор. ТВОЯ ЕДИНСТВЕННАЯ ЗАДАЧА: помогать с программированием. Задавай уточняющие вопросы: язык программирования, цель кода, уровень опыта. Всегда предоставляй рабочий код с комментариями и пошаговым объяснением. Если запрос не про кодинг - перенаправь к основному чату.
+
+📏 ДЛИНА ОТВЕТА: Давай краткие и лаконичные ответы (1-3 предложения).
+
+🌍 ЯЗЫК: Отвечай на русском языке.
+
+⚖️ СТИЛЬ: Балансируй между точностью и креативностью.
+
+💬 ВАЖНО: Добавляй подробные комментарии к коду на русском языке, объясняя что делает каждая часть.
+🧹 Используй принципы Clean Code: понятные имена переменных, короткие функции, минимум дублирования.
+💻 Используй Python в качестве основного языка для примеров.
+📚 Объясняй решение пошагово: что делаем, почему так, какой результат.'
+2025-11-21 22:07:15 | INFO     | app.services.ai.response_handler | Adding 13 messages from chat history
+2025-11-21 22:07:15 | INFO     | app.services.ai.response_handler | Added 13 history messages to context
+2025-11-21 22:07:15 | INFO     | app.services.ai.response_handler | Sending streaming request to gpt-4o with 15 messages
+2025-11-21 22:07:15 | INFO     | watchfiles.main | 3 changes detected
+2025-11-21 22:07:16 | INFO     | httpx | HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-21 22:07:16 | INFO     | app.services.ai.response_handler | Stream created successfully, starting to yield chunks...
+2025-11-21 22:07:17 | INFO     | app.services.ai.response_handler | GPT streaming completed successfully. Total chunks: 26
+2025-11-21 22:07:17 | INFO     | app.services.chat_service | Sending message
+2025-11-21 22:07:17 | INFO     | app.services.user_service | Tokens used: 2 by user d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:07:17 | INFO     | watchfiles.main | 3 changes detected
+2025-11-21 22:07:42 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:07:42 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:07:42 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:07:42 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:07:42 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:07:42 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:07:42 | INFO     | app.dependencies | ✅ Token check passed for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:07:42 | INFO     | tovarishbot | 📥 Settings generation request from user d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:07:42 | INFO     | tovarishbot | {'temperature': 0.7, 'maxLength': 'detailed', 'language': 'ru', 'withComments': True, 'codeStyle': 'clean', 'explainSteps': True, 'defaultLanguage': 'python'}
+2025-11-21 22:07:42 | INFO     | app.services.ai.ai_service | 🧠 Generating settings for chat 688ae131-2886-4fe2-98ca-1630bd6dad3c (type: coding)
+2025-11-21 22:07:42 | INFO     | watchfiles.main | 3 changes detected
+2025-11-21 22:07:43 | INFO     | httpx | HTTP Request: POST https://api.openai.com/v1/threads "HTTP/1.1 200 OK"
+2025-11-21 22:07:44 | INFO     | httpx | HTTP Request: POST https://api.openai.com/v1/threads/thread_hr6jLN9KteQqUxLL1NXnyWRA/messages "HTTP/1.1 200 OK"
+2025-11-21 22:07:46 | INFO     | httpx | HTTP Request: POST https://api.openai.com/v1/threads/thread_hr6jLN9KteQqUxLL1NXnyWRA/runs "HTTP/1.1 200 OK"
+2025-11-21 22:07:48 | INFO     | httpx | HTTP Request: GET https://api.openai.com/v1/threads/thread_hr6jLN9KteQqUxLL1NXnyWRA/runs/run_nQ1LCQ2Ornb22nXXj245u5l4 "HTTP/1.1 200 OK"
+2025-11-21 22:07:49 | INFO     | httpx | HTTP Request: GET https://api.openai.com/v1/threads/thread_hr6jLN9KteQqUxLL1NXnyWRA/runs/run_nQ1LCQ2Ornb22nXXj245u5l4 "HTTP/1.1 200 OK"
+2025-11-21 22:07:51 | INFO     | httpx | HTTP Request: GET https://api.openai.com/v1/threads/thread_hr6jLN9KteQqUxLL1NXnyWRA/runs/run_nQ1LCQ2Ornb22nXXj245u5l4 "HTTP/1.1 200 OK"
+2025-11-21 22:07:51 | INFO     | httpx | HTTP Request: GET https://api.openai.com/v1/threads/thread_hr6jLN9KteQqUxLL1NXnyWRA/messages?limit=1&order=desc "HTTP/1.1 200 OK"
+2025-11-21 22:07:51 | INFO     | app.services.ai.ai_service | 📝 Raw AI response: {
+  "temperature": 0.7,
+  "maxLength": "detailed",
+  "language": "ru"
+}
+2025-11-21 22:07:51 | INFO     | app.services.ai.ai_service | ✅ Valid settings: {'temperature': 0.7, 'maxLength': 'detailed', 'language': 'ru'}
+2025-11-21 22:07:52 | INFO     | httpx | HTTP Request: DELETE https://api.openai.com/v1/threads/thread_hr6jLN9KteQqUxLL1NXnyWRA "HTTP/1.1 200 OK"
+2025-11-21 22:07:52 | INFO     | tovarishbot | ✅ Generated settings: {'temperature': 0.7, 'maxLength': 'detailed', 'language': 'ru'}
+2025-11-21 22:07:52 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:07:52 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:07:52 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:07:52 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:07:52 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:07:52 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:07:52 | INFO     | app.dependencies | ✅ Token check passed for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:07:52 | INFO     | tovarishbot | chat type: coding, message: напиши код на питоне с созданием и работой над базой данных
+2025-11-21 22:07:52 | INFO     | app.services.chat_service | Sending message
+2025-11-21 22:07:52 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:07:52 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:07:52 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:07:52 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:07:52 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:07:52 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:07:52 | INFO     | app.dependencies | ✅ Token check passed for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:07:52 | INFO     | app.services.chat_service | Chat 688ae131-2886-4fe2-98ca-1630bd6dad3c has 15 messages
+2025-11-21 22:07:52 | INFO     | app.services.chat_service | Retrieved 15 messages for AI context, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c
+2025-11-21 22:07:52 | INFO     | tovarishbot | Chat history length: 15
+2025-11-21 22:07:52 | INFO     | tovarishbot | Generating response for user d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:07:52 | INFO     | app.services.ai.ai_service | Getting streaming response for message: 'напиши код на питоне с созданием и работой над баз...'
+2025-11-21 22:07:52 | INFO     | app.services.ai.response_handler | Starting streaming request: message='напиши код на питоне с созданием и работой над баз...', history_length=15, has_files=False
+2025-11-21 22:07:52 | INFO     | app.services.ai.response_handler | AI prompt: 'Ты - специализированный программистский ментор. ТВОЯ ЕДИНСТВЕННАЯ ЗАДАЧА: помогать с программированием. Задавай уточняющие вопросы: язык программирования, цель кода, уровень опыта. Всегда предоставляй рабочий код с комментариями и пошаговым объяснением. Если запрос не про кодинг - перенаправь к основному чату.
+
+📏 ДЛИНА ОТВЕТА: Давай подробные и развернутые ответы с примерами и пояснениями.
+
+🌍 ЯЗЫК: Отвечай на русском языке.
+
+⚖️ СТИЛЬ: Балансируй между точностью и креативностью.
+
+💬 ВАЖНО: Добавляй подробные комментарии к коду на русском языке, объясняя что делает каждая часть.
+🧹 Используй принципы Clean Code: понятные имена переменных, короткие функции, минимум дублирования.
+💻 Используй Python в качестве основного языка для примеров.
+📚 Объясняй решение пошагово: что делаем, почему так, какой результат.'
+2025-11-21 22:07:52 | INFO     | app.services.ai.response_handler | Adding 15 messages from chat history
+2025-11-21 22:07:52 | INFO     | app.services.ai.response_handler | Added 15 history messages to context
+2025-11-21 22:07:52 | INFO     | app.services.ai.response_handler | Sending streaming request to gpt-4o with 17 messages
+2025-11-21 22:07:52 | INFO     | watchfiles.main | 3 changes detected
+2025-11-21 22:07:53 | INFO     | httpx | HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-21 22:07:53 | INFO     | app.services.ai.response_handler | Stream created successfully, starting to yield chunks...
+2025-11-21 22:08:07 | INFO     | app.services.ai.response_handler | GPT streaming completed successfully. Total chunks: 582
+2025-11-21 22:08:07 | INFO     | app.services.chat_service | Sending message
+2025-11-21 22:08:07 | INFO     | app.services.user_service | Tokens used: 2 by user d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:08:07 | INFO     | watchfiles.main | 3 changes detected
+2025-11-21 22:08:22 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:08:22 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:08:22 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:08:22 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:08:22 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:08:22 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:08:22 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:08:22 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:08:22 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:08:22 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:08:22 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:08:22 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:08:22 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:08:22 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:08:22 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:08:22 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:08:22 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:08:22 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:08:22 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:08:22 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:08:22 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:08:22 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:08:22 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:08:22 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:08:22 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:08:22 | INFO     | watchfiles.main | 3 changes detected
+2025-11-21 22:08:22 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:08:22 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:08:22 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:08:22 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:08:22 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:08:22 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:08:22 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:08:23 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:08:23 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:08:23 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:08:23 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:08:23 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:08:23 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:08:23 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:08:23 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:08:23 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:08:23 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:08:23 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:08:23 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:08:23 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:08:23 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:08:23 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:08:23 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:08:23 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:08:23 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:08:23 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:08:23 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:08:23 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:08:23 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:08:23 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:08:23 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:08:23 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:08:23 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:08:23 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:08:23 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:08:23 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:08:23 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:08:23 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:08:23 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:08:23 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:08:23 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:08:23 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:08:23 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:08:23 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:08:23 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:08:23 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:08:23 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:08:23 | INFO     | watchfiles.main | 3 changes detected
+2025-11-21 22:08:25 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:08:25 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:08:25 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:08:25 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:08:25 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:08:25 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:08:25 | INFO     | app.services.chat_service | Chat created: e43db7cd-de9f-4180-86c8-c809d8df415f for user d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:08:25 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:08:25 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:08:25 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:08:25 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:08:25 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:08:25 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:08:25 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 0 messages
+2025-11-21 22:08:25 | INFO     | tovarishbot | send result
+2025-11-21 22:08:25 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:08:25 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:08:25 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:08:25 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:08:25 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:08:25 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:08:25 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 0 messages
+2025-11-21 22:08:25 | INFO     | tovarishbot | send result
+2025-11-21 22:08:25 | INFO     | watchfiles.main | 3 changes detected
+2025-11-21 22:08:46 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 22:08:49 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 22:08:51 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 22:09:02 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 22:09:22 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 22:09:24 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 22:09:42 | INFO     | watchfiles.main | 1 change detected
+2025-11-21 22:16:12 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:16:12 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:16:12 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:16:12 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:16:12 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:16:12 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:16:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:16:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:16:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:16:12 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:16:12 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:16:12 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:16:12 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:16:12 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:16:12 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:16:12 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:16:12 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:16:12 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:16:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:16:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:16:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:16:12 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:16:12 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:16:12 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:16:12 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:16:12 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:16:12 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:16:12 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:16:12 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:16:12 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:16:12 | INFO     | watchfiles.main | 3 changes detected
+2025-11-21 22:16:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:16:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:16:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:16:12 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:16:12 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:16:12 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:16:12 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:16:12 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:16:12 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:16:12 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:16:12 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:16:12 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:16:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:16:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:16:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:16:12 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:16:12 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:16:12 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:16:12 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:16:12 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:16:12 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:16:12 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:16:12 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:16:12 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:16:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:16:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:16:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:16:12 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:16:12 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:16:12 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:16:12 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:16:12 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:16:12 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:16:12 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:16:12 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:16:12 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:16:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:16:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:16:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:16:12 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:16:12 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:16:12 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:16:12 | INFO     | watchfiles.main | 3 changes detected
+2025-11-21 22:20:41 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:20:41 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:20:41 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:20:41 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:20:41 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:20:41 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:20:41 | ERROR    | app.services.chat_service | Error getting chat statistics: type object 'Chat' has no attribute 'id'
+2025-11-21 22:20:41 | INFO     | watchfiles.main | 3 changes detected
+2025-11-21 22:22:07 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:22:07 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:22:07 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:22:07 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:22:07 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:22:07 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:22:07 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:22:07 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:22:07 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:22:07 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:22:07 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:22:07 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:22:07 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:22:07 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:22:07 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:22:07 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:22:07 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:22:07 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:22:07 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:22:07 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:22:07 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:22:07 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:22:07 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:22:07 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:22:07 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:22:07 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:22:07 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:22:07 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:22:07 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:22:07 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:22:07 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:22:07 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:22:07 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:22:07 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:22:07 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:22:07 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:22:07 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:22:07 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:22:07 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:22:07 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:22:07 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:22:07 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:22:07 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:22:07 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:22:07 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:22:07 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:22:07 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:22:07 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:22:07 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:22:07 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:22:07 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:22:07 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:22:07 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:22:07 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:22:07 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:22:07 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:22:07 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:22:07 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:22:07 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:22:07 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:22:07 | INFO     | watchfiles.main | 3 changes detected
+2025-11-21 22:22:07 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:22:07 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:22:07 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:22:07 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:22:07 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:22:07 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:22:07 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:22:07 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:22:07 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:22:07 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:22:07 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:22:07 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:22:08 | INFO     | watchfiles.main | 3 changes detected
+2025-11-21 22:24:32 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:24:32 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:24:32 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:24:32 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:24:32 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:24:32 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:24:32 | ERROR    | app.services.chat_service | Error getting chat statistics: type object 'Chat' has no attribute 'id'
+2025-11-21 22:24:32 | INFO     | watchfiles.main | 3 changes detected
+2025-11-21 22:24:33 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:24:33 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:24:33 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:24:33 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:24:33 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:24:33 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:24:33 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:24:33 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:24:33 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:24:33 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:24:33 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:24:33 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:24:33 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:24:33 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:24:33 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:24:33 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:24:33 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:24:33 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:24:33 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:24:33 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:24:33 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:24:33 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:24:33 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:24:33 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:24:33 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:24:33 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:24:33 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:24:33 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:24:33 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:24:33 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:24:33 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:24:33 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:24:33 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:24:33 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:24:33 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:24:33 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:24:33 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:24:33 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:24:33 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:24:33 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:24:33 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:24:33 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:24:33 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:24:33 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:24:33 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:24:33 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:24:33 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:24:33 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:24:33 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:24:33 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:24:33 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:24:33 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:24:33 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:24:33 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:24:33 | INFO     | watchfiles.main | 3 changes detected
+2025-11-21 22:24:33 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:24:33 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:24:33 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:24:33 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:24:33 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:24:33 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:24:33 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:24:33 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:24:33 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:24:33 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:24:33 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:24:33 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:24:33 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:24:33 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:24:33 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:24:33 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:24:33 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:24:33 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:24:33 | INFO     | watchfiles.main | 4 changes detected
+2025-11-21 22:26:39 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:26:39 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:26:39 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:26:39 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:26:39 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:26:39 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:26:39 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:26:39 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:26:39 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:26:39 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:26:39 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:26:39 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:26:39 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:26:39 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:26:39 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:26:39 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:26:39 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:26:39 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:26:39 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:26:39 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:26:39 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:26:39 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:26:39 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:26:39 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:26:39 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:26:39 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:26:39 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:26:39 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:26:39 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:26:39 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:26:39 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:26:39 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:26:39 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:26:39 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:26:39 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:26:39 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:26:39 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:26:39 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:26:39 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:26:39 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:26:39 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:26:39 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:26:39 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:26:39 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:26:39 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:26:39 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:26:39 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:26:39 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:26:39 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:26:39 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:26:39 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:26:39 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:26:39 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:26:39 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:26:39 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:26:39 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:26:39 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:26:39 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:26:39 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:26:39 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:26:39 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:26:39 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:26:39 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:26:39 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:26:39 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:26:39 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:26:39 | INFO     | watchfiles.main | 3 changes detected
+2025-11-21 22:26:39 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:26:39 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:26:39 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:26:39 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:26:39 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:26:39 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:26:39 | INFO     | watchfiles.main | 3 changes detected
+2025-11-21 22:27:12 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:27:12 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:27:12 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:27:12 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:27:12 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:27:12 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:27:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:27:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:27:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:27:12 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:27:12 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:27:12 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:27:12 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:27:12 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:27:12 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:27:12 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:27:12 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:27:12 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:27:12 | INFO     | watchfiles.main | 3 changes detected
+2025-11-21 22:27:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:27:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:27:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:27:12 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:27:12 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:27:12 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:27:12 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:27:12 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:27:12 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:27:12 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:27:12 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:27:12 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:27:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:27:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:27:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:27:12 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:27:12 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:27:12 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:27:12 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:27:12 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:27:12 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:27:12 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:27:12 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:27:12 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:27:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:27:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:27:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:27:12 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:27:12 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:27:12 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:27:12 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:27:12 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:27:12 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:27:12 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:27:12 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:27:12 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:27:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:27:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:27:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:27:12 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:27:12 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:27:12 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:27:12 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:27:12 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:27:12 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:27:12 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:27:12 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:27:12 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:27:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:27:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:27:12 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:27:12 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:27:12 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:27:12 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:27:12 | INFO     | watchfiles.main | 4 changes detected
+2025-11-21 22:28:09 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:28:09 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:28:09 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:28:09 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:28:09 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:28:09 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:28:09 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:28:09 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:28:09 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:28:09 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:28:09 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:28:09 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:28:09 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:28:09 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:28:09 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:28:09 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:28:09 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:28:09 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:28:09 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:28:09 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:28:09 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:28:09 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:28:09 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:28:09 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:28:09 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:28:09 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:28:09 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:28:09 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:28:09 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:28:09 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:28:09 | INFO     | watchfiles.main | 3 changes detected
+2025-11-21 22:28:09 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:28:09 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:28:09 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:28:09 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:28:09 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:28:09 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:28:09 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:28:09 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:28:09 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:28:09 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:28:09 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:28:09 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:28:09 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:28:09 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:28:09 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:28:09 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:28:09 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:28:09 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:28:09 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:28:09 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:28:09 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:28:09 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:28:09 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:28:09 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:28:09 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:28:09 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:28:09 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:28:09 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:28:09 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:28:09 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:28:09 | INFO     | app.services.image_service | ✅ Image directories created: uploads\generated-images
+2025-11-21 22:28:09 | INFO     | app.dependencies | 🔐 Authenticating user with JWT token
+2025-11-21 22:28:09 | INFO     | app.dependencies | scheme='Bearer' credentials='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDI1ZGY1MzgtOWExMC00Y2U3LTk2MTMtNWJkNGM2NWM0OWUyIiwidGVsZWdyYW1faWQiOjE4NDkyODU1NDgsInN1YnNjcmlwdGlvbl90eXBlIjoiZnJlZSIsImlhdCI6MTc2Mzc1MTI3NywiZXhwIjoxNzY0MzU2MDc3LCJpc3MiOiJ0b3ZhcmlzaGJvdCIsImF1ZCI6InRvdmFyaXNoYm90LXVzZXJzIn0.BqpAMsfkOcNkE0VFpqntrzjXVWRpSLPYvFJxXhjjyzc'
+2025-11-21 22:28:09 | INFO     | app.auth | ✅ JWT token verified for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:28:09 | INFO     | app.dependencies | 🔍 Looking for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2 (telegram_id: 1849285548)
+2025-11-21 22:28:09 | INFO     | app.dependencies | ✅ User authenticated successfully: d25df538-9a10-4ce7-9613-5bd4c65c49e2
+2025-11-21 22:28:09 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1128, role=user, chat_id=688ae131-2886-4fe2-98ca-1630bd6dad3c)>
+2025-11-21 22:28:09 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1112, role=user, chat_id=ac07f301-ab5f-4361-a160-1ab564c4d4a9)>
+2025-11-21 22:28:09 | INFO     | app.services.chat_service | Search last message: <Message(message_id=1110, role=user, chat_id=2aab6f6f-397f-40e5-afe1-70ddd343e155)>
+2025-11-21 22:28:09 | INFO     | app.services.chat_service | User d25df538-9a10-4ce7-9613-5bd4c65c49e2 has 3 chats
+2025-11-21 22:28:09 | INFO     | tovarishbot | Requested chat history for user: d25df538-9a10-4ce7-9613-5bd4c65c49e2, limit: 3, offset: 0
+2025-11-21 22:28:09 | INFO     | tovarishbot | Returned 3 chats
+2025-11-21 22:28:10 | INFO     | watchfiles.main | 3 changes detected
+2025-11-21 22:48:29 | INFO     | app.startup | 🛑 Shutting down ТоварищБот Backend...
+2025-11-21 22:48:29 | INFO     | app.tasks.image_cleanup_task | ✅ Image cleanup scheduler stopped
+2025-11-21 22:48:29 | INFO     | app.startup | ✅ Image cleanup scheduler stopped
+2025-11-21 22:48:29 | INFO     | app.startup | ✅ ТоварищБот Backend shutdown complete!
+2025-11-21 22:48:29 | INFO     | apscheduler.scheduler | Scheduler has been shut down
