@@ -1,17 +1,30 @@
-# app/models.py (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+# app/models.py
 """
-SQLAlchemy модели для БД с relationships - ИСПРАВЛЕНИЕ КОНФЛИКТА METADATA
+SQLAlchemy модели для БД ТоварищБота
+Включает основные модели + экзаменационную систему + голосовой режим
 """
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, Text, ForeignKey, JSON, Float
+from sqlalchemy import Column, String, Integer, Boolean, DateTime, Text, ForeignKey, JSON, Float, Date, Enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
 from datetime import datetime
 import pytz
 import uuid
+import enum
 
 MoscowTZ = pytz.timezone("Europe/Moscow")
 
+
+# =====================================================
+# ОСНОВНЫЕ МОДЕЛИ
+# =====================================================
+
+class UserType(str, enum.Enum):
+    """
+    Тип пользователя в образовательной системе
+    """
+    SCHOOLER = "schooler"  # Школьник
+    STUDENT = "student"
 
 class User(Base):
     """Модель пользователя"""
@@ -27,31 +40,34 @@ class User(Base):
     tokens_balance = Column(Integer, default=5)
     tokens_used = Column(Integer, default=0)
 
+    user_type = Column(
+        Enum(UserType),
+        nullable=True,
+        comment="Тип пользователя: schooler (школьник) или student (студент)"
+    )
+
+    grade = Column(Integer, nullable=True, comment="Класс/курс ученика (1-11 для школы, 1-6 для вуза)")
+
     # Временные метки
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(MoscowTZ))
     last_activity = Column(DateTime(timezone=True), default=lambda: datetime.now(MoscowTZ))
 
-
     is_active = Column(Boolean, default=True)
 
-    # Relationships
+    # Relationships - Основные
     chats = relationship("Chat", back_populates="user", cascade="all, delete-orphan")
     messages = relationship("Message", back_populates="user", cascade="all, delete-orphan")
     attachments = relationship("Attachment", back_populates="user", cascade="all, delete-orphan")
 
+    # Relationships - Экзамены и голосовой режим
+    exam_settings = relationship("ExamSettings", back_populates="user", cascade="all, delete-orphan")
+    task_attempts = relationship("UserTaskAttempt", back_populates="user", cascade="all, delete-orphan")
+    exam_progress = relationship("ExamProgress", back_populates="user", cascade="all, delete-orphan")
+    exam_stats = relationship("ExamStats", back_populates="user", cascade="all, delete-orphan", uselist=False)
+    voice_settings = relationship("VoiceSettings", back_populates="user", cascade="all, delete-orphan", uselist=False)
+
     def __repr__(self):
         return f"<User(user_id={self.user_id}, telegram_id={self.telegram_id}, subscription={self.subscription_type})>"
-
-    # @property
-    # def full_name(self):
-    #     """Полное имя пользователя"""
-    #     parts = [self.first_name, self.last_name]
-    #     return " ".join(part for part in parts if part)
-    #
-    # @property
-    # def display_name(self):
-    #     """Отображаемое имя пользователя"""
-    #     return self.full_name or self.username or f"User {self.telegram_id}"
 
     def has_tokens(self, required: int = 1) -> bool:
         """Проверка наличия токенов"""
@@ -104,14 +120,15 @@ class Chat(Base):
     tokens_used = Column(Integer, default=0)
 
     # Временные метки
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(MoscowTZ), onupdate=lambda: datetime.now(MoscowTZ))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(MoscowTZ), onupdate=lambda: datetime.now(MoscowTZ))
-
-    # Column(DateTime(timezone=True), default=lambda: datetime.now(MoscowTZ))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(MoscowTZ),
+                        onupdate=lambda: datetime.now(MoscowTZ))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(MoscowTZ),
+                        onupdate=lambda: datetime.now(MoscowTZ))
 
     # Relationships
     user = relationship("User", back_populates="chats")
-    messages = relationship("Message", back_populates="chat", cascade="all, delete-orphan", order_by="Message.created_at")
+    messages = relationship("Message", back_populates="chat", cascade="all, delete-orphan",
+                            order_by="Message.created_at")
 
     def __repr__(self):
         return f"<Chat(chat_id={self.chat_id}, title={self.title}, type={self.type})>"
@@ -157,7 +174,6 @@ class Message(Base):
     content = Column(Text, nullable=False)
     tokens_count = Column(Integer, default=0)
 
-    # ИСПРАВЛЕНО: переименовано metadata -> message_metadata
     message_metadata = Column(JSON, nullable=True)  # Дополнительная информация
 
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(MoscowTZ))
@@ -356,3 +372,208 @@ class GeneratedImage(Base):
             "is_downloaded": self.is_downloaded,
             "file_size_mb": self.file_size_mb
         }
+
+
+# =====================================================
+# МОДЕЛИ ДЛЯ ЭКЗАМЕНАЦИОННОЙ СИСТЕМЫ
+# =====================================================
+
+class ExamSettings(Base):
+    """
+    Настройки подготовки к экзамену
+    Пользователь может создавать несколько настроек
+    """
+    __tablename__ = "exam_settings"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+
+    exam_type = Column(String, nullable=False)  # 'ОГЭ' или 'ЕГЭ'
+    exam_date = Column(Date, nullable=True)  # Общая дата экзамена
+
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(MoscowTZ))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(MoscowTZ),
+                        onupdate=lambda: datetime.now(MoscowTZ))
+
+    # Relationships
+    user = relationship("User", back_populates="exam_settings")
+    subjects = relationship("ExamSubject", back_populates="exam_settings", cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f"<ExamSettings(id={self.id}, user_id={self.user_id}, exam_type={self.exam_type})>"
+
+
+class ExamSubject(Base):
+    """
+    Предметы для сдачи с целевыми баллами и текущим прогрессом
+    """
+    __tablename__ = "exam_subjects"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    exam_settings_id = Column(Integer, ForeignKey("exam_settings.id", ondelete="CASCADE"), nullable=False)
+
+    subject_id = Column(String, nullable=False)  # 'математика', 'русский язык', и т.д.
+    target_score = Column(Integer, nullable=True)  # Целевой балл
+    current_score = Column(Integer, default=0)  # Текущая степень подготовки (0-100)
+
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(MoscowTZ))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(MoscowTZ),
+                        onupdate=lambda: datetime.now(MoscowTZ))
+
+    # Relationships
+    exam_settings = relationship("ExamSettings", back_populates="subjects")
+
+    def __repr__(self):
+        return f"<ExamSubject(id={self.id}, subject={self.subject_id}, target={self.target_score}, current={self.current_score})>"
+
+    @property
+    def progress_percentage(self):
+        """Процент прогресса подготовки"""
+        if not self.target_score or self.target_score == 0:
+            return 0
+        return min(100, int((self.current_score / self.target_score) * 100))
+
+
+class ExamTask(Base):
+    """
+    База заданий для подготовки к экзаменам
+    Общая база, которую используют все пользователи
+    """
+    __tablename__ = "exam_tasks"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    subject_id = Column(String, nullable=False)  # Предмет
+    exam_type = Column(String, nullable=False)  # 'ОГЭ' или 'ЕГЭ'
+    task_number = Column(Integer, nullable=True)  # Номер задания (например, № 13)
+    difficulty = Column(String, nullable=False)  # 'easy', 'medium', 'hard'
+
+    question_text = Column(Text, nullable=False)  # Условие задания
+    answer_type = Column(String, nullable=False)  # 'text', 'number', 'single_choice', 'multiple_choice'
+    answer_options = Column(Text, nullable=True)  # JSON массив вариантов ответа
+    correct_answer = Column(Text, nullable=False)  # Правильный ответ
+    explanation = Column(Text, nullable=True)  # Подробный разбор
+
+    points = Column(Integer, default=1)  # Баллы за задание
+    estimated_time = Column(Integer, nullable=True)  # Время (в минутах)
+
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(MoscowTZ))
+    is_active = Column(Boolean, default=True)  # Активно ли задание
+
+    # Relationships
+    attempts = relationship("UserTaskAttempt", back_populates="task", cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f"<ExamTask(id={self.id}, subject={self.subject_id}, type={self.exam_type}, difficulty={self.difficulty})>"
+
+
+class UserTaskAttempt(Base):
+    """
+    История выполненных заданий пользователем
+    """
+    __tablename__ = "user_task_attempts"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    task_id = Column(Integer, ForeignKey("exam_tasks.id", ondelete="CASCADE"), nullable=False)
+
+    user_answer = Column(Text, nullable=False)  # Ответ пользователя
+    is_correct = Column(Boolean, nullable=False)  # Правильно или нет
+
+    # Денормализация для быстрой аналитики
+    subject_id = Column(String, nullable=False)
+    exam_type = Column(String, nullable=False)
+    difficulty = Column(String, nullable=False)
+
+    time_spent = Column(Integer, nullable=True)  # Время в секундах
+    attempted_at = Column(DateTime(timezone=True), default=lambda: datetime.now(MoscowTZ))
+
+    # Relationships
+    user = relationship("User", back_populates="task_attempts")
+    task = relationship("ExamTask", back_populates="attempts")
+
+    def __repr__(self):
+        return f"<UserTaskAttempt(id={self.id}, user_id={self.user_id}, correct={self.is_correct})>"
+
+
+class ExamProgress(Base):
+    """
+    Ежедневный прогресс пользователя
+    """
+    __tablename__ = "exam_progress"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+
+    date = Column(Date, nullable=False)  # Дата
+    is_completed = Column(Boolean, default=False)  # Выполнена ли дневная норма
+    tasks_completed = Column(Integer, default=0)  # Количество выполненных заданий
+
+    # Relationships
+    user = relationship("User", back_populates="exam_progress")
+
+    def __repr__(self):
+        return f"<ExamProgress(id={self.id}, user_id={self.user_id}, date={self.date}, completed={self.is_completed})>"
+
+
+class ExamStats(Base):
+    """
+    Общая статистика пользователя по экзаменам
+    """
+    __tablename__ = "exam_stats"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False, unique=True)
+
+
+    total_points = Column(Integer, default=0)  # Всего баллов
+    tasks_solved = Column(Integer, default=0)  # Всего заданий
+    tasks_correct = Column(Integer, default=0)  # Правильных заданий
+
+    streak_days = Column(Integer, default=0)  # Текущая серия дней
+    best_streak = Column(Integer, default=0)  # Лучшая серия
+
+    last_updated = Column(DateTime(timezone=True), default=lambda: datetime.now(MoscowTZ))
+
+    # Relationships
+    user = relationship("User", back_populates="exam_stats")
+
+    def __repr__(self):
+        return f"<ExamStats(user_id={self.user_id}, points={self.total_points}, streak={self.streak_days})>"
+
+    @property
+    def accuracy_percentage(self):
+        """Процент правильных ответов"""
+        if self.tasks_solved == 0:
+            return 0
+        return int((self.tasks_correct / self.tasks_solved) * 100)
+
+
+# =====================================================
+# МОДЕЛИ ДЛЯ ГОЛОСОВОГО РЕЖИМА
+# =====================================================
+
+class VoiceSettings(Base):
+    """
+    Настройки голосового режима
+    """
+    __tablename__ = "voice_settings"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False, unique=True)
+
+    speech_speed = Column(String, default='normal')  # 'slow', 'normal', 'fast'
+    voice_bot = Column(String, default='neuro')  # 'nastya', 'sergey', 'neuro', 'alex'
+    communication_style = Column(String, default='default')  # 'default', 'mentor', 'classmate', и т.д.
+    background_music = Column(String, default='lofi')  # 'lofi', 'chillpop', 'nature', 'silence'
+    music_volume = Column(Integer, default=39)  # 0-100
+
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(MoscowTZ))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(MoscowTZ),
+                        onupdate=lambda: datetime.now(MoscowTZ))
+
+    # Relationships
+    user = relationship("User", back_populates="voice_settings")
+
+    def __repr__(self):
+        return f"<VoiceSettings(user_id={self.user_id}, voice={self.voice_bot}, style={self.communication_style})>"

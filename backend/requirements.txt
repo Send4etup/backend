@@ -106,3 +106,4 @@ fastapi-csrf-protect==0.3.4
 requests
 
 APScheduler
+tiktoken

@@ -19,7 +19,12 @@ Base = declarative_base()
 def create_database():
     """Создание всех таблиц в БД"""
     try:
-        from app.models import User, Chat, Message, Attachment
+        from app.models import (
+            User, Chat, Message, Attachment, GeneratedImage,
+            ExamSettings, ExamSubject, ExamTask, UserTaskAttempt,
+            ExamProgress, ExamStats, VoiceSettings
+        )
+
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables created successfully")
         return True

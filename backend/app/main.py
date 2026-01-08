@@ -56,6 +56,9 @@ from app.services.telegram_validator import (
     get_telegram_validator
 )
 
+# Роутеры
+from app.routers import exam_router
+
 # База данных
 from app.database import get_db
 from app.models import User, Chat, Message, Attachment
@@ -116,7 +119,8 @@ from app.schemas import (
     ImageGenerationRequest,
     ImageGenerationResponse,
     ChatSettingsRequest,
-    ChatSettingsResponse
+    ChatSettingsResponse,
+    UserEducationUpdate
 )
 
 # ============================================
@@ -149,6 +153,11 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+# ============================================
+# ДОБАВЛЕНИЕ РОУТЕРОВ
+# ============================================
+app.include_router(exam_router.router, prefix="/api")
 
 # ============================================
 # MIDDLEWARE И НАСТРОЙКИ
@@ -214,7 +223,7 @@ async def telegram_auth_secure_v2(
     try:
         logger.info("🔐 Starting secure Telegram authentication")
 
-        # 1. Валидируем initData с помощью HMAC-SHA256
+        # 1. Валидуем initData с помощью HMAC-SHA256
         try:
             validated_data = validate_telegram_init_data(auth_request.init_data)
             logger.info("✅ Telegram initData validation successful")
@@ -229,7 +238,7 @@ async def telegram_auth_secure_v2(
         user_data = validated_data['user']
         telegram_id = user_data['id']
 
-        logger.info(f"🆔 Validated Telegram user ID: {telegram_id}")
+        logger.info(f"Validated Telegram user ID: {telegram_id}")
 
         # 3. Создаем или находим пользователя в БД
         user_info = {
@@ -248,7 +257,7 @@ async def telegram_auth_secure_v2(
             "user_id": user.user_id,
             "telegram_id": user.telegram_id,
             "subscription_type": user.subscription_type,
-            "auth_method": "telegram_secure",  # Отмечаем метод авторизации
+            "auth_method": "telegram_secure",
             "auth_date": validated_data.get('auth_date')
         })
 
@@ -266,7 +275,9 @@ async def telegram_auth_secure_v2(
                 "tokens_balance": user.tokens_balance,
                 "first_name": user_data.get('first_name', ''),
                 "username": user_data.get('username', ''),
-                "is_premium": user_data.get('is_premium', False)
+                "is_premium": user_data.get('is_premium', False),
+                "grade": user.grade,
+                "user_type": user.user_type,
             },
             "telegram_data": {
                 "auth_date": validated_data.get('auth_date'),
@@ -402,6 +413,8 @@ async def get_user_profile_extended(
                 "username": profile.get('username', ''),
                 "language_code": profile.get('language_code', 'ru'),
                 "is_premium": profile.get('is_premium', False),
+                "user_type": user.user_type,
+                "grade": user.grade,
                 "created_at": profile.get('created_at'),
                 "last_activity": profile.get('last_activity')
             },
@@ -437,6 +450,107 @@ async def get_user_profile_extended(
             detail="Failed to get user profile"
         )
 
+
+@app.patch("/api/profile/education")
+async def update_user_education(
+        education_data: UserEducationUpdate,
+        user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    """
+    Обновление образовательной информации пользователя
+    """
+    try:
+        logger.info(f"📚 Updating education info for user {user.user_id}")
+
+        # СНАЧАЛА обновляем user_type
+        if education_data.user_type:
+            if education_data.user_type not in ['schooler', 'student']:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="user_type должен быть 'schooler' или 'student'"
+                )
+            user.user_type = education_data.user_type
+            logger.info(f"✅ User type updated to: {education_data.user_type}")
+
+        # ПОТОМ валидируем и обновляем grade на основе АКТУАЛЬНОГО типа
+        if education_data.grade is not None:
+            # Используем обновленный тип (если был передан) или существующий из БД
+            current_type = user.user_type
+
+            # Если тип не установлен - требуем сначала указать тип
+            if not current_type:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Сначала укажите тип пользователя (schooler или student)"
+                )
+
+            # Валидация в зависимости от типа
+            if current_type == 'schooler':
+                if not (1 <= education_data.grade <= 11):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Для школьников класс должен быть от 1 до 11"
+                    )
+            elif current_type == 'student':
+                if not (1 <= education_data.grade <= 6):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Для студентов курс должен быть от 1 до 6"
+                    )
+
+            user.grade = education_data.grade
+            logger.info(f"✅ Grade updated to: {education_data.grade}")
+
+
+        db.commit()
+        db.refresh(user)
+
+        logger.info(f"✅ Education info updated successfully for user {user.user_id}")
+
+        return {
+            "success": True,
+            "message": "Образовательная информация обновлена",
+            "data": {
+                "user_id": user.user_id,
+                "user_type": user.user_type,
+                "grade": user.grade,
+                "updated_at": datetime.now().isoformat()
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error updating education info: {e}")
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Ошибка обновления образовательной информации: {str(e)}"
+        )
+
+
+@app.get("/api/profile/education")
+async def get_user_education(
+    user: User = Depends(get_current_user)
+):
+    """
+    Получение образовательной информации текущего пользователя
+    """
+    try:
+        return {
+            "user_id": user.user_id,
+            "user_type": user.user_type,
+            "grade": user.grade,
+            "user_type_label": "Школьник" if user.user_type == "schooler" else "Студент" if user.user_type == "student" else None,
+            "grade_label": f"{user.grade} класс" if user.user_type == "schooler" and user.grade else f"{user.grade} курс" if user.user_type == "student" and user.grade else None
+        }
+    except Exception as e:
+        logger.error(f"❌ Error getting education info: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ошибка получения образовательной информации"
+        )
 
 # =====================================================
 # ЧАТЫ
@@ -774,7 +888,6 @@ async def send_message_with_files(
         chat = services.chat_service.get_chat(chat_id, user.user_id)
 
         if message.strip():
-            # Если есть текст - используем его
             user_message = await services.chat_service.send_message(
                 chat_id, user.user_id, message, "user", counter.text_tokens(message), chat.type
             )
@@ -782,7 +895,7 @@ async def send_message_with_files(
         elif len(files) > 0:
             auto_message = f"Прикреплено файлов: {len(files)}"
             user_message = await services.chat_service.send_message(
-                chat_id, user.user_id, auto_message, "user", 2, chat.type
+                chat_id, user.user_id, auto_message, "user", 1, chat.type
             )
             logger.info(f"✅ Sent auto-generated message for files: {user_message.message_id}")
 
@@ -796,7 +909,6 @@ async def send_message_with_files(
                 continue
 
             try:
-                # Проверяем лимиты подписки
                 limits = user.get_subscription_limits()
                 max_size = limits["max_file_size_mb"] * 1024 * 1024
 
@@ -826,7 +938,6 @@ async def send_message_with_files(
         else:
             logger.warning(f"User {user.user_id} has insufficient tokens")
 
-        # 4. Формируем ответ
         response_data = {
             "status": "success",
             "chat_id": chat_id,
@@ -837,7 +948,6 @@ async def send_message_with_files(
             "timestamp": datetime.now().isoformat()
         }
 
-        # 5. Удаляем обработанные документы
         for file_data in uploaded_files:
             if file_data.get('file_type') in SUPPORTED_DOCUMENT_TYPES:
                 try:
@@ -969,7 +1079,6 @@ async def generate_image_endpoint(
                     f"{analysis_text}\n\n"
                     f"=== КОНЕЦ КОНТЕКСТА ===\n\n"
                 )
-                logger.info(f"✅ Files analyzed: {len(analyses)} files, {len(files_context)} chars")
 
         final_prompt = request.message
 
@@ -978,9 +1087,6 @@ async def generate_image_endpoint(
                 f"{files_context}"
                 f"На основе информации выше, создай изображение: {request.message}"
             )
-            logger.info(f"📝 Combined prompt length: {len(final_prompt)} chars")
-
-        logger.info("🎨 Starting DALL-E image generation...")
 
         generation_result = await ai_service.generate_image(
             message=final_prompt,
@@ -999,8 +1105,6 @@ async def generate_image_endpoint(
                 error=generation_result.error or "Неизвестная ошибка генерации",
                 timestamp=datetime.now().isoformat()
             )
-
-        logger.info("Saving generated image...")
 
         attachment = None
         display_image_url = generation_result.image_url
@@ -1031,12 +1135,14 @@ async def generate_image_endpoint(
         if generation_result.revised_prompt:
             message_content += f"\n\nУлучшенный промпт: {generation_result.revised_prompt}"
 
+        width, height = map(int, generation_result.size.split("x"))
+
         ai_message = await services.chat_service.send_message(
             chat_id=request.chat_id,
             user_id=user.user_id,
             content=message_content,
             role="assistant",
-            tokens_count=counter.image_tokens(1024, 1024),
+            tokens_count=counter.image_tokens(width, height)+counter.text_tokens(message_content),
         )
 
         if saved_image:

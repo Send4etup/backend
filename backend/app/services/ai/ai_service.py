@@ -25,6 +25,7 @@ class ImageGenerationResponse(BaseModel):
     success: bool
     image_url: Optional[str] = None
     revised_prompt: Optional[str] = None
+    size: Optional[str] = None
     error: Optional[str] = None
 
 class AIService:
@@ -237,16 +238,14 @@ class AIService:
                 style=style,
             )
 
-
-
             if response.data and len(response.data) > 0:
                 image_data = response.data[0]
-                logger.info("✅ Image generated successfully")
 
                 return ImageGenerationResponse(
                     success=True,
                     image_url=image_data.url,
-                    revised_prompt=getattr(image_data, 'revised_prompt', None)
+                    revised_prompt=getattr(image_data, 'revised_prompt', None),
+                    size=size
                 )
             else:
                 logger.error("❌ No image data received from DALL-E")

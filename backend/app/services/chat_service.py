@@ -291,7 +291,7 @@ class ChatService:
             ).count()
 
             # Популярные типы чатов
-            chat_types = self.db.query(Chat.type, func.count(Chat.id)).filter(
+            chat_types = self.db.query(Chat.type, func.count(Chat.chat_id)).filter(
                 Chat.user_id == user_id
             ).group_by(Chat.type).all()
 

@@ -32,7 +32,7 @@ class CORSConfig:
             "http://127.0.0.1:3000",
             "http://127.0.0.1:5173",
             "http://localhost:8080",  # Дополнительные порты
-            "http://127.0.0.1:8080"
+            "http://127.0.0.1:8080",
             "https://bfd990ebf425.ngrok-free.app"
         ]
 
@@ -58,7 +58,7 @@ class CORSConfig:
     @staticmethod
     def get_allowed_methods() -> List[str]:
         """Разрешенные HTTP методы"""
-        return ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+        return ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
 
     @staticmethod
     def get_allowed_headers() -> List[str]:

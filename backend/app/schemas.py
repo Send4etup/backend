@@ -2,8 +2,19 @@
 Pydantic схемы для API запросов и ответов ТоварищБот
 Все модели данных для валидации и сериализации
 """
+from pydantic import BaseModel, Field, validator
+from typing import List, Optional
+from datetime import date, datetime
+from enum import Enum
+
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
+
+
+# =====================================================
+# BASIC SCHEMAS
+# =====================================================
+
 
 class TelegramAuthRequest(BaseModel):
     """
@@ -40,6 +51,18 @@ class UserProfileResponse(BaseModel):
     subscription_limits: Dict[str, Any]
     created_at: str
     last_activity: str
+
+class UserEducationUpdate(BaseModel):
+    user_type: Optional[str] = None
+    grade: Optional[int] = None
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "user_type": "schooler",
+                "grade": 10
+            }
+        }
 
 class ChatResponse(BaseModel):
     chat_id: str
@@ -177,3 +200,273 @@ class ChatSettingsResponse(BaseModel):
                 "success": True
             }
         }
+
+# =====================================================
+# EXAM MODE - ENUMS
+# =====================================================
+
+class ExamType(str, Enum):
+    """Тип экзамена"""
+    OGE = "ОГЭ"
+    EGE = "ЕГЭ"
+
+
+class Difficulty(str, Enum):
+    """Уровень сложности задания"""
+    EASY = "easy"
+    MEDIUM = "medium"
+    HARD = "hard"
+
+
+class AnswerType(str, Enum):
+    """Тип ответа на задание"""
+    TEXT = "text"
+    NUMBER = "number"
+    SINGLE_CHOICE = "single_choice"
+    MULTIPLE_CHOICE = "multiple_choice"
+
+# =====================================================
+# EXAM SETTINGS
+# =====================================================
+
+class SubjectBase(BaseModel):
+    """Базовая схема предмета"""
+    subject_id: str = Field(..., description="ID предмета (математика, русский язык)")
+    target_score: Optional[int] = Field(None, ge=0, le=100, description="Целевой балл")
+
+
+class SubjectCreate(SubjectBase):
+    """Схема создания предмета"""
+    pass
+
+
+class SubjectUpdate(BaseModel):
+    """Схема обновления предмета"""
+    target_score: Optional[int] = Field(None, ge=0, le=100)
+    current_score: Optional[int] = Field(None, ge=0, le=100)
+
+
+class SubjectResponse(SubjectBase):
+    """Схема ответа с предметом"""
+    id: int
+    exam_settings_id: int
+    current_score: int = Field(default=0, description="Текущий балл подготовки")
+    progress_percentage: int = Field(description="Процент прогресса")
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ExamSettingsCreate(BaseModel):
+    """Схема создания настроек экзамена"""
+    exam_type: ExamType = Field(..., description="Тип экзамена (ОГЭ или ЕГЭ)")
+    exam_date: Optional[date] = Field(None, description="Дата экзамена")
+    subjects: List[SubjectCreate] = Field(..., min_items=1, description="Список предметов для сдачи")
+
+    @validator('subjects')
+    def validate_subjects(cls, v):
+        """Проверка уникальности предметов"""
+        subject_ids = [s.subject_id for s in v]
+        if len(subject_ids) != len(set(subject_ids)):
+            raise ValueError("Предметы должны быть уникальными")
+        return v
+
+
+class ExamSettingsUpdate(BaseModel):
+    """Схема обновления настроек экзамена"""
+    exam_date: Optional[date] = None
+
+
+class ExamSettingsResponse(BaseModel):
+    """Схема ответа с настройками экзамена"""
+    id: int
+    user_id: str
+    exam_type: str
+    exam_date: Optional[date]
+    subjects: List[SubjectResponse] = []
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# =====================================================
+# EXAM TASKS
+# =====================================================
+
+class TaskFilter(BaseModel):
+    """Фильтр для получения заданий"""
+    subject_id: str = Field(..., description="ID предмета")
+    exam_type: ExamType = Field(..., description="Тип экзамена")
+    difficulty: Optional[Difficulty] = Field(None, description="Сложность")
+    exclude_solved: bool = Field(True, description="Исключить уже решенные задания")
+
+
+class TaskResponse(BaseModel):
+    """Схема ответа с заданием"""
+    id: int
+    subject_id: str
+    exam_type: str
+    task_number: Optional[int]
+    difficulty: str
+    question_text: str
+    answer_type: str
+    answer_options: Optional[List[str]] = Field(None, description="Варианты ответа (если есть)")
+    points: int
+    estimated_time: Optional[int] = Field(None, description="Примерное время (минуты)")
+
+    class Config:
+        from_attributes = True
+
+
+class TaskWithExplanation(TaskResponse):
+    """Схема задания с разбором (после ответа)"""
+    correct_answer: str
+    explanation: Optional[str]
+
+
+# =====================================================
+# TASK ATTEMPTS
+# =====================================================
+
+class TaskAttemptCreate(BaseModel):
+    """Схема отправки ответа на задание"""
+    task_id: int = Field(..., description="ID задания")
+    user_answer: str = Field(..., min_length=1, description="Ответ пользователя")
+    time_spent: Optional[int] = Field(None, ge=0, description="Время на задание (секунды)")
+
+
+class TaskAttemptResponse(BaseModel):
+    """Схема ответа после проверки задания"""
+    id: int
+    task_id: int
+    user_answer: str
+    is_correct: bool
+    points_earned: int
+    time_spent: Optional[int]
+    attempted_at: datetime
+
+    # Детали задания
+    task: TaskWithExplanation
+
+    class Config:
+        from_attributes = True
+
+
+# =====================================================
+# STATISTICS
+# =====================================================
+
+class SubjectStats(BaseModel):
+    """Статистика по предмету"""
+    subject_id: str
+    total_attempts: int = 0
+    correct_attempts: int = 0
+    accuracy: float = Field(0.0, ge=0, le=100, description="Точность в процентах")
+    average_time: Optional[float] = Field(None, description="Среднее время (секунды)")
+
+    # По сложности
+    easy_accuracy: float = 0.0
+    medium_accuracy: float = 0.0
+    hard_accuracy: float = 0.0
+
+
+class ExamStatsResponse(BaseModel):
+    """Общая статистика пользователя"""
+    user_id: str
+    total_points: int
+    tasks_solved: int
+    tasks_correct: int
+    accuracy_percentage: int
+    streak_days: int
+    best_streak: int
+    last_updated: datetime
+
+    # Статистика по предметам
+    subjects: List[SubjectStats] = []
+
+    class Config:
+        from_attributes = True
+
+
+# =====================================================
+# PROGRESS
+# =====================================================
+
+class DailyProgress(BaseModel):
+    """Прогресс за день"""
+    date: date
+    is_completed: bool
+    tasks_completed: int
+    target_tasks: int = Field(5, description="Целевое количество заданий в день")
+    completion_percentage: int = Field(ge=0, le=100)
+
+
+class ProgressCalendar(BaseModel):
+    """Календарь прогресса за период"""
+    user_id: str
+    period_start: date
+    period_end: date
+    days: List[DailyProgress]
+    total_days: int
+    completed_days: int
+    completion_rate: float = Field(ge=0, le=100, description="Процент выполненных дней")
+
+
+# =====================================================
+# DASHBOARD
+# =====================================================
+
+class ExamDashboard(BaseModel):
+    """Полная информация для дашборда экзаменов"""
+    # Настройки
+    exam_settings: Optional[ExamSettingsResponse] = None
+
+    # Статистика
+    stats: ExamStatsResponse
+
+    # Прогресс за последние 7 дней
+    recent_progress: List[DailyProgress]
+
+    # Сегодняшний прогресс
+    today_progress: DailyProgress
+
+    # Рекомендации
+    recommended_subjects: List[str] = Field(description="Предметы требующие внимания")
+
+
+# =====================================================
+# UTILITY
+# =====================================================
+
+class AvailableSubjects(BaseModel):
+    """Список доступных предметов"""
+    oge_subjects: List[str] = [
+        "математика", "русский язык", "английский язык",
+        "физика", "химия", "биология", "география",
+        "обществознание", "история", "информатика", "литература"
+    ]
+    ege_subjects: List[str] = [
+        "математика (базовая)", "математика (профильная)",
+        "русский язык", "английский язык", "немецкий язык",
+        "физика", "химия", "биология", "география",
+        "обществознание", "история", "информатика", "литература"
+    ]
+
+
+class BulkTasksRequest(BaseModel):
+    """Запрос пакета заданий"""
+    subject_id: str
+    exam_type: ExamType
+    count: int = Field(5, ge=1, le=20, description="Количество заданий")
+    difficulty: Optional[Difficulty] = None
+    exclude_solved: bool = True
+
+
+class BulkTasksResponse(BaseModel):
+    """Ответ с пакетом заданий"""
+    tasks: List[TaskResponse]
+    total_available: int = Field(description="Всего доступных заданий")
+    has_more: bool = Field(description="Есть ли еще задания")
