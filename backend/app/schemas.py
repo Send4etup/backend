@@ -275,9 +275,27 @@ class ExamSettingsCreate(BaseModel):
 
 
 class ExamSettingsUpdate(BaseModel):
-    """Схема обновления настроек экзамена"""
-    exam_date: Optional[date] = None
+    """
+    Схема для обновления существующих настроек экзамена
+    Теперь поддерживает обновление предметов и целевых баллов
+    """
+    exam_date: Optional[date] = Field(None, description="Дата экзамена")
+    subjects: Optional[List[SubjectBase]] = Field(
+        None,
+        description="Обновленный список предметов для сдачи (если None - не меняется)"
+    )
 
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "exam_date": "2025-06-15",
+                "subjects": [
+                    {"subject_id": "математика", "target_score": 90},
+                    {"subject_id": "русский язык", "target_score": 95},
+                    {"subject_id": "физика", "target_score": 85}
+                ]
+            }
+        }
 
 class ExamSettingsResponse(BaseModel):
     """Схема ответа с настройками экзамена"""
@@ -470,3 +488,276 @@ class BulkTasksResponse(BaseModel):
     tasks: List[TaskResponse]
     total_available: int = Field(description="Всего доступных заданий")
     has_more: bool = Field(description="Есть ли еще задания")
+
+
+# =====================================================
+# КАЧЕСТВО ОБУЧЕНИЯ (QUALITY TAB)
+# =====================================================
+
+class DifficultyQuality(BaseModel):
+    """
+    Качество решения по уровню сложности
+    """
+    difficulty: str = Field(..., description="Уровень сложности: easy, medium, hard")
+    total_attempts: int = Field(0, description="Всего попыток")
+    correct_attempts: int = Field(0, description="Правильных ответов")
+    accuracy: float = Field(0.0, ge=0, le=100, description="Точность в процентах")
+    average_time: Optional[float] = Field(None, description="Среднее время решения (секунды)")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "difficulty": "easy",
+                "total_attempts": 20,
+                "correct_attempts": 17,
+                "accuracy": 85.0,
+                "average_time": 45.5
+            }
+        }
+
+
+class SubjectQuality(BaseModel):
+    """
+    Качество решения по предмету
+    """
+    subject_id: str = Field(..., description="ID предмета")
+    subject_name: str = Field(..., description="Название предмета")
+    total_attempts: int = Field(0, description="Всего попыток")
+    correct_attempts: int = Field(0, description="Правильных ответов")
+    accuracy: float = Field(0.0, ge=0, le=100, description="Общая точность")
+    average_time: Optional[float] = Field(None, description="Среднее время решения")
+
+    # Детализация по сложности
+    easy_accuracy: float = Field(0.0, description="Точность на легких")
+    medium_accuracy: float = Field(0.0, description="Точность на средних")
+    hard_accuracy: float = Field(0.0, description="Точность на сложных")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "subject_id": "mathematics",
+                "subject_name": "Математика",
+                "total_attempts": 90,
+                "correct_attempts": 63,
+                "accuracy": 70.0,
+                "average_time": 120.5,
+                "easy_accuracy": 85.0,
+                "medium_accuracy": 68.0,
+                "hard_accuracy": 45.0
+            }
+        }
+
+
+class QualityAnalytics(BaseModel):
+    """
+    Полная аналитика качества обучения пользователя
+    """
+    user_id: str
+    exam_type: str = Field(..., description="Тип экзамена: ОГЭ или ЕГЭ")
+
+    # Общая статистика
+    total_attempts: int = Field(0, description="Всего попыток")
+    correct_attempts: int = Field(0, description="Правильных ответов")
+    overall_accuracy: float = Field(0.0, ge=0, le=100, description="Общая точность")
+
+    # По уровням сложности
+    difficulties: List[DifficultyQuality] = Field(
+        default_factory=list,
+        description="Статистика по каждому уровню сложности"
+    )
+
+    # По предметам
+    subjects: List[SubjectQuality] = Field(
+        default_factory=list,
+        description="Статистика по каждому предмету"
+    )
+
+    # Рекомендации
+    weak_areas: List[str] = Field(
+        default_factory=list,
+        description="Слабые места (предметы с точностью < 60%)"
+    )
+    recommendations: List[str] = Field(
+        default_factory=list,
+        description="Рекомендации для улучшения"
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "user_id": "user_123",
+                "exam_type": "ОГЭ",
+                "total_attempts": 100,
+                "correct_attempts": 70,
+                "overall_accuracy": 70.0,
+                "difficulties": [
+                    {
+                        "difficulty": "easy",
+                        "total_attempts": 20,
+                        "correct_attempts": 17,
+                        "accuracy": 85.0,
+                        "average_time": 45.5
+                    }
+                ],
+                "subjects": [
+                    {
+                        "subject_id": "mathematics",
+                        "subject_name": "Математика",
+                        "total_attempts": 50,
+                        "correct_attempts": 35,
+                        "accuracy": 70.0,
+                        "average_time": 120.5,
+                        "easy_accuracy": 85.0,
+                        "medium_accuracy": 68.0,
+                        "hard_accuracy": 45.0
+                    }
+                ],
+                "weak_areas": ["Физика", "Химия"],
+                "recommendations": [
+                    "Больше времени уделяйте сложным заданиям",
+                    "Повторите темы по физике"
+                ]
+            }
+        }
+
+
+# =====================================================
+# ИСТОРИЯ ЗАДАНИЙ (TASK HISTORY)
+# =====================================================
+
+class TaskAttemptHistory(BaseModel):
+    """
+    История попытки решения задания
+    """
+    id: int = Field(..., description="ID попытки")
+    task_id: int = Field(..., description="ID задания")
+    user_answer: str = Field(..., description="Ответ пользователя")
+    is_correct: bool = Field(..., description="Правильность ответа")
+    subject_id: str = Field(..., description="ID предмета")
+    subject_name: str = Field(..., description="Название предмета")
+    exam_type: str = Field(..., description="Тип экзамена")
+    difficulty: str = Field(..., description="Сложность задания")
+    time_spent: Optional[int] = Field(None, description="Время на решение (секунды)")
+    attempted_at: datetime = Field(..., description="Дата и время попытки")
+
+    # Детали задания (опционально, если нужно)
+    question_text: Optional[str] = Field(None, description="Текст вопроса")
+    correct_answer: Optional[str] = Field(None, description="Правильный ответ")
+    explanation: Optional[str] = Field(None, description="Объяснение")
+    points: Optional[int] = Field(None, description="Баллы за задание")
+
+    class Config:
+        from_attributes = True
+        json_schema_extra = {
+            "example": {
+                "id": 1,
+                "task_id": 6,
+                "user_answer": "-121",
+                "is_correct": False,
+                "subject_id": "mathematics",
+                "subject_name": "Математика",
+                "exam_type": "ОГЭ",
+                "difficulty": "hard",
+                "time_spent": 5,
+                "attempted_at": "2026-01-08T23:11:29.972390",
+                "question_text": "Решите уравнение...",
+                "correct_answer": "42",
+                "explanation": "Для решения нужно...",
+                "points": 1
+            }
+        }
+
+
+class TaskHistoryFilter(BaseModel):
+    """
+    Фильтр для истории заданий
+    """
+    exam_type: Optional[str] = Field(None, description="Фильтр по типу экзамена")
+    subject_id: Optional[str] = Field(None, description="Фильтр по предмету")
+    difficulty: Optional[str] = Field(None, description="Фильтр по сложности")
+    is_correct: Optional[bool] = Field(None, description="Фильтр по правильности (True/False/None)")
+    date_from: Optional[datetime] = Field(None, description="С какой даты")
+    date_to: Optional[datetime] = Field(None, description="До какой даты")
+    limit: int = Field(20, ge=1, le=100, description="Максимальное количество записей")
+    offset: int = Field(0, ge=0, description="Смещение для пагинации")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "exam_type": "ОГЭ",
+                "subject_id": "mathematics",
+                "difficulty": "hard",
+                "is_correct": False,
+                "limit": 20,
+                "offset": 0
+            }
+        }
+
+
+class TaskHistoryResponse(BaseModel):
+    """
+    Ответ со списком истории заданий
+    """
+    total: int = Field(..., description="Общее количество записей")
+    items: List[TaskAttemptHistory] = Field(..., description="Список попыток")
+    has_more: bool = Field(..., description="Есть ли еще записи")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "total": 100,
+                "items": [
+                    {
+                        "id": 1,
+                        "task_id": 6,
+                        "user_answer": "-121",
+                        "is_correct": False,
+                        "subject_id": "mathematics",
+                        "subject_name": "Математика",
+                        "exam_type": "ОГЭ",
+                        "difficulty": "hard",
+                        "time_spent": 5,
+                        "attempted_at": "2026-01-08T23:11:29.972390"
+                    }
+                ],
+                "has_more": True
+            }
+        }
+
+
+# =====================================================
+# СТАТИСТИКА ДЛЯ НЕПРАВИЛЬНЫХ ОТВЕТОВ
+# =====================================================
+
+class IncorrectTasksSummary(BaseModel):
+    """
+    Сводка по неправильно решенным заданиям
+    """
+    total_incorrect: int = Field(0, description="Всего неправильных")
+    by_subject: dict = Field(default_factory=dict, description="По предметам")
+    by_difficulty: dict = Field(default_factory=dict, description="По сложности")
+    most_common_mistakes: List[str] = Field(
+        default_factory=list,
+        description="Типичные ошибки"
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "total_incorrect": 30,
+                "by_subject": {
+                    "mathematics": 15,
+                    "physics": 10,
+                    "russian": 5
+                },
+                "by_difficulty": {
+                    "easy": 3,
+                    "medium": 12,
+                    "hard": 15
+                },
+                "most_common_mistakes": [
+                    "Ошибки в вычислениях",
+                    "Невнимательное чтение условия"
+                ]
+            }
+        }

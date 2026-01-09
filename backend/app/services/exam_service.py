@@ -9,6 +9,8 @@ from typing import List, Optional, Tuple
 from datetime import date, datetime, timedelta
 import random
 
+from app.logging import setup_logging
+
 from app.models import (
     User, ExamSettings, ExamSubject, ExamTask,
     UserTaskAttempt, ExamProgress, ExamStats
@@ -17,6 +19,8 @@ from app.schemas import (
     ExamSettingsCreate, SubjectCreate, SubjectUpdate,
     TaskFilter, TaskAttemptCreate, SubjectStats
 )
+
+logger = setup_logging()
 
 
 class ExamService:
@@ -112,6 +116,68 @@ class ExamService:
         db.commit()
         db.refresh(settings)
         return settings
+
+    @staticmethod
+    def update_exam_settings_full(
+            db: Session,
+            settings_id: int,
+            user_id: str,
+            exam_date: Optional[date] = None,
+            subjects: Optional[List[dict]] = None
+    ):
+        """
+        Полное обновление настроек экзамена
+        Обновляет дату экзамена и/или список предметов с целевыми баллами
+        """
+        from app.models import ExamSettings, ExamSubject
+
+        try:
+            # Находим настройки экзамена и проверяем права доступа
+            settings = db.query(ExamSettings).filter(
+                ExamSettings.id == settings_id,
+                ExamSettings.user_id == user_id
+            ).first()
+
+            if not settings:
+                logger.warning(f"ExamSettings {settings_id} не найдены для user {user_id}")
+                return None
+
+            # Обновляем дату экзамена, если передана
+            if exam_date is not None:
+                settings.exam_date = exam_date
+                logger.info(f"Updated exam_date for settings {settings_id} to {exam_date}")
+
+            # Обновляем предметы, если переданы
+            if subjects is not None:
+                # Удаляем все старые предметы
+                db.query(ExamSubject).filter(
+                    ExamSubject.exam_settings_id == settings_id
+                ).delete()
+
+                logger.info(f"Deleted old subjects for settings {settings_id}")
+
+                # Добавляем новые предметы
+                for subject_data in subjects:
+                    new_subject = ExamSubject(
+                        exam_settings_id=settings_id,
+                        subject_id=subject_data.get("subject_id"),
+                        target_score=subject_data.get("target_score")
+                    )
+                    db.add(new_subject)
+
+                logger.info(f"Added {len(subjects)} new subjects for settings {settings_id}")
+
+            # Сохраняем изменения
+            db.commit()
+            db.refresh(settings)
+
+            logger.info(f"✅ ExamSettings {settings_id} updated successfully")
+            return settings
+
+        except Exception as e:
+            logger.error(f"❌ Error updating exam settings {settings_id}: {e}")
+            db.rollback()
+            raise
 
     @staticmethod
     def delete_exam_settings(

@@ -35,8 +35,6 @@ def setup_logging():
                 log_file,
                 encoding='utf-8'  # Важно для кириллицы!
             ),
-            # Вывод в консоль
-            # logging.StreamHandler(sys.stdout)
         ]
     )
 

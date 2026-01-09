@@ -5,8 +5,10 @@ API endpoints для экзаменационной системы
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
+import json
 
+from app.logging import setup_logging
 from app.database import get_db
 from app.services.exam_service import ExamService
 from app.schemas import (
@@ -23,11 +25,23 @@ from app.schemas import (
     # Progress
     DailyProgress, ProgressCalendar,
     # Enums
-    ExamType, Difficulty
+    ExamType, Difficulty,
+
+    QualityAnalytics,
+    DifficultyQuality,
+    SubjectQuality,
+    TaskHistoryFilter,
+    TaskHistoryResponse,
+    TaskAttemptHistory,
+    IncorrectTasksSummary,
 )
-from app.models import ExamSettings, ExamSubject, ExamTask
+
+from app.models import ExamSettings, ExamSubject, ExamTask, UserTaskAttempt
+
 
 router = APIRouter(prefix="/exam", tags=["Экзамены"])
+
+logger = setup_logging()
 
 
 # =====================================================
@@ -102,16 +116,54 @@ async def update_exam_settings(
         user_id: str = Query(..., description="ID пользователя"),
         db: Session = Depends(get_db)
 ):
-    """Обновление настроек экзамена (даты)"""
-    settings = ExamService.update_exam_settings(db, settings_id, user_id, data.exam_date)
+    """
+    Полное обновление настроек экзамена
 
-    if not settings:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Настройки экзамена не найдены"
+    Позволяет обновить:
+    - Дату экзамена (exam_date)
+    - Список предметов и их целевые баллы (subjects)
+    """
+    try:
+        logger.info(f"📝 Updating exam settings {settings_id} for user {user_id}")
+        logger.info(f"Data: exam_date={data.exam_date}, subjects={data.subjects}")
+
+        # Преобразуем subjects в список словарей, если они есть
+        subjects_data = None
+        if data.subjects is not None:
+            subjects_data = [
+                {
+                    "subject_id": subject.subject_id,
+                    "target_score": subject.target_score
+                }
+                for subject in data.subjects
+            ]
+
+        # Обновляем настройки через сервис
+        settings = ExamService.update_exam_settings_full(
+            db=db,
+            settings_id=settings_id,
+            user_id=user_id,
+            exam_date=data.exam_date,
+            subjects=subjects_data
         )
 
-    return settings
+        if not settings:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Настройки экзамена не найдены или у вас нет доступа"
+            )
+
+        logger.info(f"✅ ExamSettings {settings_id} updated successfully")
+        return settings
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error updating exam settings {settings_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Ошибка при обновлении настроек экзамена: {str(e)}"
+        )
 
 
 @router.delete("/settings/{settings_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -213,7 +265,22 @@ async def get_random_task(
             detail="Нет доступных заданий с указанными параметрами"
         )
 
-    return task
+    task_dict = {
+        "id": task.id,
+        "subject_id": task.subject_id,
+        "exam_type": task.exam_type,
+        "task_number": task.task_number,
+        "difficulty": task.difficulty,
+        "question_text": task.question_text,
+        "answer_type": task.answer_type,
+        "answer_options": json.loads(task.answer_options) if task.answer_options else None,
+        "correct_answer": task.correct_answer,
+        "explanation": task.explanation,
+        "points": task.points,
+        "estimated_time": task.estimated_time
+    }
+
+    return task_dict
 
 
 @router.post("/tasks/bulk", response_model=BulkTasksResponse)
@@ -269,6 +336,21 @@ async def submit_answer(
 
         task = db.query(ExamTask).filter(ExamTask.id == data.task_id).first()
 
+        task_dict = {
+            "id": task.id,
+            "subject_id": task.subject_id,
+            "exam_type": task.exam_type,
+            "task_number": task.task_number,
+            "difficulty": task.difficulty,
+            "question_text": task.question_text,
+            "answer_type": task.answer_type,
+            "answer_options": json.loads(task.answer_options) if task.answer_options else None,
+            "correct_answer": task.correct_answer,
+            "explanation": task.explanation,
+            "points": task.points,
+            "estimated_time": task.estimated_time
+        }
+
         return {
             "id": attempt.id,
             "task_id": attempt.task_id,
@@ -277,8 +359,9 @@ async def submit_answer(
             "points_earned": points,
             "time_spent": attempt.time_spent,
             "attempted_at": attempt.attempted_at,
-            "task": task
+            "task": task_dict
         }
+
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -436,6 +519,492 @@ async def get_progress_calendar(
         completion_rate=round(completed_days / len(days_data) * 100, 2) if days_data else 0
     )
 
+
+# =====================================================
+# УТИЛИТЫ ДЛЯ ФОРМАТИРОВАНИЯ НАЗВАНИЙ
+# =====================================================
+
+def get_subject_name(subject_id: str) -> str:
+    """
+    Получить русское название предмета по ID
+    """
+    subject_names = {
+        'russian': 'Русский язык',
+        'mathematics': 'Математика',
+        'mathematics_base': 'Математика (база)',
+        'mathematics_profile': 'Математика (профиль)',
+        'physics': 'Физика',
+        'chemistry': 'Химия',
+        'biology': 'Биология',
+        'informatics': 'Информатика',
+        'history': 'История',
+        'social_studies': 'Обществознание',
+        'geography': 'География',
+        'literature': 'Литература',
+        'english': 'Английский язык',
+        'german': 'Немецкий язык',
+        'french': 'Французский язык',
+        'spanish': 'Испанский язык',
+        'chinese': 'Китайский язык'
+    }
+    return subject_names.get(subject_id, subject_id)
+
+
+def generate_recommendations(quality_data: dict) -> List[str]:
+    """
+    Генерация рекомендаций на основе данных о качестве
+    """
+    recommendations = []
+
+    # Анализ по сложности
+    if quality_data.get('hard_accuracy', 0) < 50:
+        recommendations.append("💪 Больше времени уделяйте сложным заданиям - практика повысит вашу точность")
+
+    if quality_data.get('easy_accuracy', 0) < 70:
+        recommendations.append("📚 Повторите базовые темы - это фундамент для более сложных заданий")
+
+    if quality_data.get('medium_accuracy', 0) < 60:
+        recommendations.append("🎯 Сосредоточьтесь на заданиях среднего уровня - они составляют основу экзамена")
+
+    # Анализ по времени
+    if quality_data.get('average_time', 0) > 180:
+        recommendations.append("⏱️ Работайте над скоростью решения - тренируйтесь с таймером")
+
+    # Общая точность
+    if quality_data.get('overall_accuracy', 0) < 60:
+        recommendations.append("📖 Уделите внимание теоретической подготовке перед практикой")
+    elif quality_data.get('overall_accuracy', 0) > 80:
+        recommendations.append("🌟 Отличная работа! Продолжайте поддерживать высокий уровень")
+
+    # Если нет рекомендаций
+    if not recommendations:
+        recommendations.append("✨ Продолжайте регулярную практику для стабильных результатов")
+
+    return recommendations
+
+
+# =====================================================
+# КАЧЕСТВО ОБУЧЕНИЯ
+# =====================================================
+
+@router.get("/quality/analytics", response_model=QualityAnalytics)
+async def get_quality_analytics(
+        user_id: str = Query(..., description="ID пользователя"),
+        exam_type: Optional[str] = Query(None, description="Фильтр по типу экзамена (ОГЭ/ЕГЭ)"),
+        subject_id: Optional[str] = Query(None, description="Фильтр по конкретному предмету"),
+        db: Session = Depends(get_db)
+):
+    """
+    Получение аналитики качества обучения пользователя
+
+    Включает:
+    - Общую точность ответов
+    - Статистику по уровням сложности (easy/medium/hard)
+    - Статистику по предметам
+    - Слабые места и рекомендации
+
+    **Параметры:**
+    - user_id: ID пользователя
+    - exam_type: Опциональный фильтр по типу экзамена
+    - subject_id: Опциональный фильтр по предмету
+    """
+
+    # Базовый запрос
+    base_query = db.query(UserTaskAttempt).filter(
+        UserTaskAttempt.user_id == user_id
+    )
+
+    # Применяем фильтры
+    if exam_type:
+        base_query = base_query.filter(UserTaskAttempt.exam_type == exam_type)
+
+    if subject_id:
+        base_query = base_query.filter(UserTaskAttempt.subject_id == subject_id)
+
+    all_attempts = base_query.all()
+
+    # Если нет данных
+    if not all_attempts:
+        return QualityAnalytics(
+            user_id=user_id,
+            exam_type=exam_type or "Не указан",
+            total_attempts=0,
+            correct_attempts=0,
+            overall_accuracy=0.0,
+            difficulties=[],
+            subjects=[],
+            weak_areas=[],
+            recommendations=["Начните решать задания, чтобы увидеть аналитику"]
+        )
+
+    # Общая статистика
+    total_attempts = len(all_attempts)
+    correct_attempts = sum(1 for a in all_attempts if a.is_correct)
+    overall_accuracy = round((correct_attempts / total_attempts) * 100, 2) if total_attempts > 0 else 0.0
+
+    # ============================================
+    # СТАТИСТИКА ПО СЛОЖНОСТИ
+    # ============================================
+    difficulties_data = []
+
+    for diff in ['easy', 'medium', 'hard']:
+        diff_attempts = [a for a in all_attempts if a.difficulty == diff]
+
+        if diff_attempts:
+            diff_correct = sum(1 for a in diff_attempts if a.is_correct)
+            diff_accuracy = round((diff_correct / len(diff_attempts)) * 100, 2)
+
+            # Среднее время (если указано)
+            times = [a.time_spent for a in diff_attempts if a.time_spent]
+            avg_time = round(sum(times) / len(times), 2) if times else None
+
+            difficulties_data.append(DifficultyQuality(
+                difficulty=diff,
+                total_attempts=len(diff_attempts),
+                correct_attempts=diff_correct,
+                accuracy=diff_accuracy,
+                average_time=avg_time
+            ))
+
+    # ============================================
+    # СТАТИСТИКА ПО ПРЕДМЕТАМ
+    # ============================================
+    subjects_data = []
+    weak_areas = []
+
+    # Группируем по предметам
+    subjects_dict = {}
+    for attempt in all_attempts:
+        subj_id = attempt.subject_id
+        if subj_id not in subjects_dict:
+            subjects_dict[subj_id] = []
+        subjects_dict[subj_id].append(attempt)
+
+    for subj_id, attempts in subjects_dict.items():
+        total = len(attempts)
+        correct = sum(1 for a in attempts if a.is_correct)
+        accuracy = round((correct / total) * 100, 2) if total > 0 else 0.0
+
+        # Среднее время
+        times = [a.time_spent for a in attempts if a.time_spent]
+        avg_time = round(sum(times) / len(times), 2) if times else None
+
+        # Точность по сложности
+        easy_acc = 0.0
+        medium_acc = 0.0
+        hard_acc = 0.0
+
+        for diff in ['easy', 'medium', 'hard']:
+            diff_attempts = [a for a in attempts if a.difficulty == diff]
+            if diff_attempts:
+                diff_correct = sum(1 for a in diff_attempts if a.is_correct)
+                acc = round((diff_correct / len(diff_attempts)) * 100, 2)
+
+                if diff == 'easy':
+                    easy_acc = acc
+                elif diff == 'medium':
+                    medium_acc = acc
+                elif diff == 'hard':
+                    hard_acc = acc
+
+        subjects_data.append(SubjectQuality(
+            subject_id=subj_id,
+            subject_name=get_subject_name(subj_id),
+            total_attempts=total,
+            correct_attempts=correct,
+            accuracy=accuracy,
+            average_time=avg_time,
+            easy_accuracy=easy_acc,
+            medium_accuracy=medium_acc,
+            hard_accuracy=hard_acc
+        ))
+
+        # Определяем слабые места (точность < 60%)
+        if accuracy < 60:
+            weak_areas.append(get_subject_name(subj_id))
+
+    # ============================================
+    # РЕКОМЕНДАЦИИ
+    # ============================================
+    quality_data = {
+        'overall_accuracy': overall_accuracy,
+        'easy_accuracy': next((d.accuracy for d in difficulties_data if d.difficulty == 'easy'), 0),
+        'medium_accuracy': next((d.accuracy for d in difficulties_data if d.difficulty == 'medium'), 0),
+        'hard_accuracy': next((d.accuracy for d in difficulties_data if d.difficulty == 'hard'), 0),
+        'average_time': sum(a.time_spent for a in all_attempts if a.time_spent) / len(
+            [a for a in all_attempts if a.time_spent]) if [a for a in all_attempts if a.time_spent] else 0
+    }
+
+    recommendations = generate_recommendations(quality_data)
+
+    return QualityAnalytics(
+        user_id=user_id,
+        exam_type=exam_type or "Все экзамены",
+        total_attempts=total_attempts,
+        correct_attempts=correct_attempts,
+        overall_accuracy=overall_accuracy,
+        difficulties=difficulties_data,
+        subjects=subjects_data,
+        weak_areas=weak_areas,
+        recommendations=recommendations
+    )
+
+
+# =====================================================
+# ИСТОРИЯ ЗАДАНИЙ
+# =====================================================
+
+@router.get("/history/tasks", response_model=TaskHistoryResponse)
+async def get_task_history(
+        user_id: str = Query(..., description="ID пользователя"),
+        exam_type: Optional[str] = Query(None, description="Фильтр по типу экзамена"),
+        subject_id: Optional[str] = Query(None, description="Фильтр по предмету"),
+        difficulty: Optional[str] = Query(None, description="Фильтр по сложности"),
+        is_correct: Optional[bool] = Query(None, description="Фильтр по правильности"),
+        date_from: Optional[datetime] = Query(None, description="С какой даты"),
+        date_to: Optional[datetime] = Query(None, description="До какой даты"),
+        limit: int = Query(20, ge=1, le=100, description="Максимальное количество записей"),
+        offset: int = Query(0, ge=0, description="Смещение для пагинации"),
+        db: Session = Depends(get_db)
+):
+    """
+    Получение истории всех попыток решения заданий
+
+    Поддерживает фильтрацию по:
+    - Типу экзамена (ОГЭ/ЕГЭ)
+    - Предмету
+    - Сложности (easy/medium/hard)
+    - Правильности ответа (True/False)
+    - Датам
+
+    **Примеры использования:**
+    - Все задания: `/history/tasks?user_id=xxx`
+    - Только неправильные: `/history/tasks?user_id=xxx&is_correct=false`
+    - Математика сложная: `/history/tasks?user_id=xxx&subject_id=mathematics&difficulty=hard`
+    """
+
+    # Базовый запрос с JOIN к ExamTask для получения деталей
+    base_query = db.query(
+        UserTaskAttempt,
+        ExamTask
+    ).join(
+        ExamTask,
+        UserTaskAttempt.task_id == ExamTask.id
+    ).filter(
+        UserTaskAttempt.user_id == user_id
+    )
+
+    # Применяем фильтры
+    if exam_type:
+        base_query = base_query.filter(UserTaskAttempt.exam_type == exam_type)
+
+    if subject_id:
+        base_query = base_query.filter(UserTaskAttempt.subject_id == subject_id)
+
+    if difficulty:
+        base_query = base_query.filter(UserTaskAttempt.difficulty == difficulty)
+
+    if is_correct is not None:
+        base_query = base_query.filter(UserTaskAttempt.is_correct == is_correct)
+
+    if date_from:
+        base_query = base_query.filter(UserTaskAttempt.attempted_at >= date_from)
+
+    if date_to:
+        base_query = base_query.filter(UserTaskAttempt.attempted_at <= date_to)
+
+    # Сортировка по дате (новые первые)
+    base_query = base_query.order_by(UserTaskAttempt.attempted_at.desc())
+
+    # Получаем общее количество
+    total = base_query.count()
+
+    # Применяем пагинацию
+    results = base_query.limit(limit).offset(offset).all()
+
+    # Формируем ответ
+    items = []
+    for attempt, task in results:
+        items.append(TaskAttemptHistory(
+            id=attempt.id,
+            task_id=attempt.task_id,
+            user_answer=attempt.user_answer,
+            is_correct=attempt.is_correct,
+            subject_id=attempt.subject_id,
+            subject_name=get_subject_name(attempt.subject_id),
+            exam_type=attempt.exam_type,
+            difficulty=attempt.difficulty,
+            time_spent=attempt.time_spent,
+            attempted_at=attempt.attempted_at,
+            # Детали задания
+            question_text=task.question_text if task else None,
+            correct_answer=task.correct_answer if task else None,
+            explanation=task.explanation if task else None,
+            points=task.points if task else None
+        ))
+
+    has_more = (offset + limit) < total
+
+    return TaskHistoryResponse(
+        total=total,
+        items=items,
+        has_more=has_more
+    )
+
+
+# =====================================================
+# НЕПРАВИЛЬНЫЕ ЗАДАНИЯ
+# =====================================================
+
+@router.get("/history/incorrect", response_model=TaskHistoryResponse)
+async def get_incorrect_tasks(
+        user_id: str = Query(..., description="ID пользователя"),
+        exam_type: Optional[str] = Query(None, description="Фильтр по типу экзамена"),
+        subject_id: Optional[str] = Query(None, description="Фильтр по предмету"),
+        difficulty: Optional[str] = Query(None, description="Фильтр по сложности"),
+        limit: int = Query(20, ge=1, le=100, description="Максимальное количество записей"),
+        offset: int = Query(0, ge=0, description="Смещение для пагинации"),
+        db: Session = Depends(get_db)
+):
+    """
+    Получение истории ТОЛЬКО неправильно решенных заданий
+
+    Это упрощенный endpoint для быстрого доступа к ошибкам.
+    Позволяет пользователю быстро найти задания для повторного решения.
+    """
+
+    # Используем основной endpoint с фильтром is_correct=False
+    return await get_task_history(
+        user_id=user_id,
+        exam_type=exam_type,
+        subject_id=subject_id,
+        difficulty=difficulty,
+        is_correct=False,  # Только неправильные
+        date_from=None,
+        date_to=None,
+        limit=limit,
+        offset=offset,
+        db=db
+    )
+
+
+@router.get("/history/incorrect/summary", response_model=IncorrectTasksSummary)
+async def get_incorrect_summary(
+        user_id: str = Query(..., description="ID пользователя"),
+        exam_type: Optional[str] = Query(None, description="Фильтр по типу экзамена"),
+        db: Session = Depends(get_db)
+):
+    """
+    Получение сводки по неправильно решенным заданиям
+
+    Показывает:
+    - Общее количество ошибок
+    - Распределение по предметам
+    - Распределение по сложности
+    - Типичные ошибки (можно расширить в будущем)
+    """
+
+    # Базовый запрос
+    base_query = db.query(UserTaskAttempt).filter(
+        UserTaskAttempt.user_id == user_id,
+        UserTaskAttempt.is_correct == False
+    )
+
+    if exam_type:
+        base_query = base_query.filter(UserTaskAttempt.exam_type == exam_type)
+
+    incorrect_attempts = base_query.all()
+
+    # Подсчеты
+    total_incorrect = len(incorrect_attempts)
+
+    # По предметам
+    by_subject = {}
+    for attempt in incorrect_attempts:
+        subject_name = get_subject_name(attempt.subject_id)
+        by_subject[subject_name] = by_subject.get(subject_name, 0) + 1
+
+    # По сложности
+    by_difficulty = {}
+    for attempt in incorrect_attempts:
+        diff = attempt.difficulty
+        by_difficulty[diff] = by_difficulty.get(diff, 0) + 1
+
+    # Типичные ошибки (заглушка для будущего расширения)
+    most_common_mistakes = []
+    if total_incorrect > 0:
+        # Можно добавить более сложный анализ
+        if by_difficulty.get('hard', 0) > total_incorrect * 0.4:
+            most_common_mistakes.append("Много ошибок в сложных заданиях")
+        if by_difficulty.get('easy', 0) > total_incorrect * 0.3:
+            most_common_mistakes.append("Невнимательность в простых заданиях")
+
+    return IncorrectTasksSummary(
+        total_incorrect=total_incorrect,
+        by_subject=by_subject,
+        by_difficulty=by_difficulty,
+        most_common_mistakes=most_common_mistakes
+    )
+
+
+# =====================================================
+# ПОВТОРНОЕ РЕШЕНИЕ ЗАДАНИЯ
+# =====================================================
+
+@router.get("/task/{task_id}/retry", response_model=dict)
+async def get_task_for_retry(
+        task_id: int,
+        user_id: str = Query(..., description="ID пользователя"),
+        db: Session = Depends(get_db)
+):
+    """
+    Получение задания для повторного решения
+
+    Возвращает полную информацию о задании БЕЗ правильного ответа,
+    чтобы пользователь мог попробовать решить заново.
+    """
+
+    # Проверяем, что пользователь действительно решал это задание
+    attempt = db.query(UserTaskAttempt).filter(
+        UserTaskAttempt.user_id == user_id,
+        UserTaskAttempt.task_id == task_id
+    ).first()
+
+    if not attempt:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Вы еще не решали это задание"
+        )
+
+    # Получаем задание
+    task = db.query(ExamTask).filter(ExamTask.id == task_id).first()
+
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Задание не найдено"
+        )
+
+    # Возвращаем без правильного ответа
+    return {
+        "id": task.id,
+        "subject_id": task.subject_id,
+        "subject_name": get_subject_name(task.subject_id),
+        "exam_type": task.exam_type,
+        "task_number": task.task_number,
+        "difficulty": task.difficulty,
+        "question_text": task.question_text,
+        "answer_type": task.answer_type,
+        "answer_options": task.answer_options,
+        "points": task.points,
+        "estimated_time": task.estimated_time,
+        # История попыток пользователя (для контекста)
+        "previous_attempts": db.query(UserTaskAttempt).filter(
+            UserTaskAttempt.user_id == user_id,
+            UserTaskAttempt.task_id == task_id
+        ).count(),
+        "last_attempt_was_correct": attempt.is_correct
+    }
 
 # =====================================================
 # UTILS
