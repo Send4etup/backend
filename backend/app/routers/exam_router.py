@@ -3,6 +3,7 @@
 API endpoints для экзаменационной системы
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy import func, and_
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date, timedelta, datetime
@@ -768,7 +769,9 @@ async def get_task_history(
         db: Session = Depends(get_db)
 ):
     """
-    Получение истории всех попыток решения заданий
+    Получение истории решения заданий
+
+    Показывает УНИКАЛЬНЫЕ задания (по task_id) с последней попыткой для каждого.
 
     Поддерживает фильтрацию по:
     - Типу экзамена (ОГЭ/ЕГЭ)
@@ -783,40 +786,54 @@ async def get_task_history(
     - Математика сложная: `/history/tasks?user_id=xxx&subject_id=mathematics&difficulty=hard`
     """
 
-    # Базовый запрос с JOIN к ExamTask для получения деталей
+    # Шаг 1: Создаём подзапрос для получения ID последней попытки каждого задания
+    subquery = db.query(
+        UserTaskAttempt.task_id,
+        func.max(UserTaskAttempt.id).label('last_attempt_id')
+    ).filter(
+        UserTaskAttempt.user_id == user_id
+    )
+
+    # Применяем фильтры к подзапросу
+    if exam_type:
+        subquery = subquery.filter(UserTaskAttempt.exam_type == exam_type)
+
+    if subject_id:
+        subquery = subquery.filter(UserTaskAttempt.subject_id == subject_id)
+
+    if difficulty:
+        subquery = subquery.filter(UserTaskAttempt.difficulty == difficulty)
+
+    if is_correct is not None:
+        subquery = subquery.filter(UserTaskAttempt.is_correct == is_correct)
+
+    if date_from:
+        subquery = subquery.filter(UserTaskAttempt.attempted_at >= date_from)
+
+    if date_to:
+        subquery = subquery.filter(UserTaskAttempt.attempted_at <= date_to)
+
+    # Группируем по task_id для получения уникальных заданий
+    subquery = subquery.group_by(UserTaskAttempt.task_id).subquery()
+
+    # Шаг 2: Основной запрос с JOIN к ExamTask и подзапросу
     base_query = db.query(
         UserTaskAttempt,
         ExamTask
     ).join(
         ExamTask,
         UserTaskAttempt.task_id == ExamTask.id
+    ).join(
+        subquery,
+        UserTaskAttempt.id == subquery.c.last_attempt_id
     ).filter(
         UserTaskAttempt.user_id == user_id
     )
 
-    # Применяем фильтры
-    if exam_type:
-        base_query = base_query.filter(UserTaskAttempt.exam_type == exam_type)
-
-    if subject_id:
-        base_query = base_query.filter(UserTaskAttempt.subject_id == subject_id)
-
-    if difficulty:
-        base_query = base_query.filter(UserTaskAttempt.difficulty == difficulty)
-
-    if is_correct is not None:
-        base_query = base_query.filter(UserTaskAttempt.is_correct == is_correct)
-
-    if date_from:
-        base_query = base_query.filter(UserTaskAttempt.attempted_at >= date_from)
-
-    if date_to:
-        base_query = base_query.filter(UserTaskAttempt.attempted_at <= date_to)
-
     # Сортировка по дате (новые первые)
     base_query = base_query.order_by(UserTaskAttempt.attempted_at.desc())
 
-    # Получаем общее количество
+    # Получаем общее количество уникальных заданий
     total = base_query.count()
 
     # Применяем пагинацию
@@ -845,12 +862,13 @@ async def get_task_history(
 
     has_more = (offset + limit) < total
 
+    logger.info(f"📜 История заданий для пользователя {user_id}: {len(items)} уникальных заданий (total={total})")
+
     return TaskHistoryResponse(
         total=total,
         items=items,
         has_more=has_more
     )
-
 
 # =====================================================
 # НЕПРАВИЛЬНЫЕ ЗАДАНИЯ
@@ -869,22 +887,108 @@ async def get_incorrect_tasks(
     """
     Получение истории ТОЛЬКО неправильно решенных заданий
 
-    Это упрощенный endpoint для быстрого доступа к ошибкам.
-    Позволяет пользователю быстро найти задания для повторного решения.
+    Логика:
+    - Показывает УНИКАЛЬНЫЕ задания, которые пользователь решал неправильно
+    - Если для задания есть хотя бы одна правильная попытка - оно НЕ попадает в список
+    - Исключаются задания с правильными решениями
     """
 
-    # Используем основной endpoint с фильтром is_correct=False
-    return await get_task_history(
-        user_id=user_id,
-        exam_type=exam_type,
-        subject_id=subject_id,
-        difficulty=difficulty,
-        is_correct=False,  # Только неправильные
-        date_from=None,
-        date_to=None,
-        limit=limit,
-        offset=offset,
-        db=db
+    correct_task_ids_query = db.query(UserTaskAttempt.task_id).filter(
+        UserTaskAttempt.user_id == user_id,
+        UserTaskAttempt.is_correct == True
+    ).distinct()
+
+    if exam_type:
+        correct_task_ids_query = correct_task_ids_query.filter(
+            UserTaskAttempt.exam_type == exam_type
+        )
+
+    correct_task_ids = {row[0] for row in correct_task_ids_query.all()}
+
+    base_query = db.query(
+        UserTaskAttempt,
+        ExamTask
+    ).join(
+        ExamTask,
+        UserTaskAttempt.task_id == ExamTask.id
+    ).filter(
+        UserTaskAttempt.user_id == user_id,
+        UserTaskAttempt.is_correct == False,
+        ~UserTaskAttempt.task_id.in_(correct_task_ids)
+    )
+
+    if exam_type:
+        base_query = base_query.filter(UserTaskAttempt.exam_type == exam_type)
+
+    if subject_id:
+        base_query = base_query.filter(UserTaskAttempt.subject_id == subject_id)
+
+    if difficulty:
+        base_query = base_query.filter(UserTaskAttempt.difficulty == difficulty)
+
+    subquery = db.query(
+        UserTaskAttempt.task_id,
+        func.max(UserTaskAttempt.attempted_at).label('last_attempt')
+    ).filter(
+        UserTaskAttempt.user_id == user_id,
+        UserTaskAttempt.is_correct == False,
+        ~UserTaskAttempt.task_id.in_(correct_task_ids)
+    )
+
+    if exam_type:
+        subquery = subquery.filter(UserTaskAttempt.exam_type == exam_type)
+    if subject_id:
+        subquery = subquery.filter(UserTaskAttempt.subject_id == subject_id)
+    if difficulty:
+        subquery = subquery.filter(UserTaskAttempt.difficulty == difficulty)
+
+    subquery = subquery.group_by(UserTaskAttempt.task_id).subquery()
+
+    main_query = db.query(
+        UserTaskAttempt,
+        ExamTask
+    ).join(
+        ExamTask,
+        UserTaskAttempt.task_id == ExamTask.id
+    ).join(
+        subquery,
+        and_(
+            UserTaskAttempt.task_id == subquery.c.task_id,
+            UserTaskAttempt.attempted_at == subquery.c.last_attempt
+        )
+    ).filter(
+        UserTaskAttempt.user_id == user_id
+    ).order_by(UserTaskAttempt.attempted_at.desc())
+
+    total = main_query.count()
+
+    results = main_query.limit(limit).offset(offset).all()
+
+    items = []
+    for attempt, task in results:
+        items.append(TaskAttemptHistory(
+            id=attempt.id,
+            task_id=attempt.task_id,
+            user_answer=attempt.user_answer,
+            is_correct=attempt.is_correct,
+            subject_id=attempt.subject_id,
+            subject_name=get_subject_name(attempt.subject_id),
+            exam_type=attempt.exam_type,
+            difficulty=attempt.difficulty,
+            time_spent=attempt.time_spent,
+            attempted_at=attempt.attempted_at,
+            question_text=task.question_text if task else None,
+            correct_answer=task.correct_answer if task else None,
+            explanation=task.explanation if task else None,
+            points=task.points if task else None
+        ))
+
+    has_more = (offset + limit) < total
+
+    return TaskHistoryResponse(
+        total=total,
+        items=items,
+        has_more=has_more
     )
 
 
@@ -898,25 +1002,53 @@ async def get_incorrect_summary(
     Получение сводки по неправильно решенным заданиям
 
     Показывает:
-    - Общее количество ошибок
+    - Общее количество УНИКАЛЬНЫХ ошибок (только задания без правильных решений)
     - Распределение по предметам
     - Распределение по сложности
-    - Типичные ошибки (можно расширить в будущем)
+    - Типичные ошибки
     """
 
-    # Базовый запрос
-    base_query = db.query(UserTaskAttempt).filter(
+    # Шаг 1: Получаем все task_id с правильными решениями
+    correct_task_ids_query = db.query(UserTaskAttempt.task_id).filter(
         UserTaskAttempt.user_id == user_id,
-        UserTaskAttempt.is_correct == False
+        UserTaskAttempt.is_correct == True
+    ).distinct()
+
+    if exam_type:
+        correct_task_ids_query = correct_task_ids_query.filter(
+            UserTaskAttempt.exam_type == exam_type
+        )
+
+    correct_task_ids = {row[0] for row in correct_task_ids_query.all()}
+
+    logger.info(f"🔍 Найдено {len(correct_task_ids)} заданий с правильными решениями")
+
+    # Шаг 2: Получаем последнюю попытку для каждого УНИКАЛЬНОГО неправильного задания
+    # Подзапрос: находим ID последней попытки для каждого task_id
+    subquery = db.query(
+        UserTaskAttempt.task_id,
+        func.max(UserTaskAttempt.id).label('last_attempt_id')
+    ).filter(
+        UserTaskAttempt.user_id == user_id,
+        UserTaskAttempt.is_correct == False,
+        ~UserTaskAttempt.task_id.in_(correct_task_ids)  # Исключаем задания с правильными решениями
     )
 
     if exam_type:
-        base_query = base_query.filter(UserTaskAttempt.exam_type == exam_type)
+        subquery = subquery.filter(UserTaskAttempt.exam_type == exam_type)
 
-    incorrect_attempts = base_query.all()
+    subquery = subquery.group_by(UserTaskAttempt.task_id).subquery()
+
+    # Основной запрос: получаем последние попытки для уникальных заданий
+    incorrect_attempts = db.query(UserTaskAttempt).join(
+        subquery,
+        UserTaskAttempt.id == subquery.c.last_attempt_id
+    ).all()
 
     # Подсчеты
     total_incorrect = len(incorrect_attempts)
+
+    logger.info(f"📊 Найдено {total_incorrect} уникальных заданий с ошибками (без правильных решений)")
 
     # По предметам
     by_subject = {}
@@ -930,10 +1062,9 @@ async def get_incorrect_summary(
         diff = attempt.difficulty
         by_difficulty[diff] = by_difficulty.get(diff, 0) + 1
 
-    # Типичные ошибки (заглушка для будущего расширения)
+    # Типичные ошибки
     most_common_mistakes = []
     if total_incorrect > 0:
-        # Можно добавить более сложный анализ
         if by_difficulty.get('hard', 0) > total_incorrect * 0.4:
             most_common_mistakes.append("Много ошибок в сложных заданиях")
         if by_difficulty.get('easy', 0) > total_incorrect * 0.3:
@@ -945,7 +1076,6 @@ async def get_incorrect_summary(
         by_difficulty=by_difficulty,
         most_common_mistakes=most_common_mistakes
     )
-
 
 # =====================================================
 # ПОВТОРНОЕ РЕШЕНИЕ ЗАДАНИЯ

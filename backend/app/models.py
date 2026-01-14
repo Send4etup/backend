@@ -525,7 +525,6 @@ class ExamStats(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(String, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False, unique=True)
 
-
     total_points = Column(Integer, default=0)  # Всего баллов
     tasks_solved = Column(Integer, default=0)  # Всего заданий
     tasks_correct = Column(Integer, default=0)  # Правильных заданий
